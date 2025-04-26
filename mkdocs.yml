@@ -20,10 +20,13 @@ nav:
       - MkDocs: it/tools/MkDocs.md
 
 markdown_extensions:
+  - footnotes
+  - def_list
   - pymdownx.highlight:
       anchor_linenums: true
   - pymdownx.inlinehilite
   - pymdownx.snippets
+  - pymdownx.tasklist
   - pymdownx.superfences
 
 theme:
