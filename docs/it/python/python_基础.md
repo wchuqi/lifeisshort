@@ -26,6 +26,7 @@
 * 4、Web开发
 * 5、爬虫
 * 6、运维脚本
+* 7、数据挖掘（Data Mining）
 
 # 基础
 
@@ -264,6 +265,67 @@ a + b = 3
 ### 输出
 
 
+## 条件与循环
+
+Python不支持switch语句
+
+![if缺省](./images/if缺省.png)
+
+Python中的循环一般通过 for 循环和 while 循环实现。
+
+Python 内置的函数`enumerate()`
+
+```python
+expression1 if condition else expression2 for item in iterable
+等同：
+for item in iterable:
+    if condition:
+        expression1
+    else:
+        expression2
+
+如果没有 else 语句，则需要写成：
+expression for item in iterable if condition
+```
+
+```python
+复用并不仅仅局限于一个循环。
+
+比如，给定两个列表 x、y，要求返回 x、y 中所有元素对组成的元祖，相等情况除外。
+[(xx, yy) for xx in x for yy in y if xx != yy]
+等价于：
+l = []
+for xx in x:
+    for yy in y:
+        if xx != yy:
+            l.append((xx, yy))
+```
+
+```python
+attributes = ['name', 'dob', 'gender']
+values = [['jason', '2000-01-01', 'male'],
+['mike', '1999-01-01', 'male'],
+['nancy', '2001-02-01', 'female']
+]
+
+s = [dict(zip(attributes,v)) for v in values]
+s = [dict(zip(attributes,value)) for value in values if len(attributes)==len(value)]
+
+res=[]
+for value in values:
+    if len(attributes)!=len(value):
+        continue
+    temp={}
+    for index,each in enumerate(value):
+        temp[attributes[index]]=each
+    res.append(temp)
+print(res)
+
+# expected outout:
+[{'name': 'jason', 'dob': '2000-01-01', 'gender': 'male'},
+{'name': 'mike', 'dob': '1999-01-01', 'gender': 'male'},
+{'name': 'nancy', 'dob': '2001-02-01', 'gender': 'female'}]
+```
 
 # 进阶
 
@@ -278,7 +340,7 @@ a + b = 3
 
 比如下面的例子：B用for循环比例子A用while循环快很多。
 
-因为range这个函数是C写的，直接调用。但是i += 1这个操作得通过解释器间接调用C，而这个简单的增值操作又涉及到object的创建和删除（i是immutable的），因此相对来说很耽误时间。
+因为range这个函数是C写的，直接调用。但是i += 1这个操作得通过解释器间接调用C，而这个简单的增值操作又涉及到object的创建和删除（i是immutable的，i += 1 相当于 i =new int(i + 1)）），因此相对来说很耽误时间。
 
 ```python
 # (A)
@@ -292,6 +354,9 @@ for i in range(0, 100000000):
 
 
 # 模块
+
+## collections 模块
+
 
 ## dis分析字节码
 
