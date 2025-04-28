@@ -327,6 +327,388 @@ print(res)
 {'name': 'nancy', 'dob': '2001-02-01', 'gender': 'female'}]
 ```
 
+## 异常处理
+
+错误和异常
+
+> 异常，通常是指程序运行的过程中遇到了错误，终止并退出。
+> 我们通常使用 try except语句去处理异常，这样程序就不会被终止，仍能继续执行。
+
+
+
+[异常doc](https://docs.python.org/3/library/exceptions.html#bltin-exceptions)
+
+```python
+try:
+    s = input('please enter two numbers separated by comma: ')
+    num1 = int(s.split(',')[0].strip())
+    num2 = int(s.split(',')[1].strip())
+    ...
+except (ValueError, IndexError) as err:
+    print('Error: {}'.format(err))
+    print('continue')
+
+或者：
+try:
+    s = input('please enter two numbers separated by comma: ')
+    num1 = int(s.split(',')[0].strip())
+    num2 = int(s.split(',')[1].strip())
+    ...
+except ValueError as err:
+    print('Error: {}'.format(err))
+    print('continue')
+except IndexError as err:
+    print('Error: {}'.format(err))
+    print('continue')
+# Exception 是其他所有非系统异常的基类，能够匹配任意非系统异常。
+except Exception as err:
+    print('Other error: {}'.format(err))
+# 在 except 后面省略异常类型，这表示与任意异常相匹配（包括系统异常等）
+except:
+    print('Other error')
+```
+
+### 自定义异常
+```python
+class MyInputError(Exception):
+    """Exception raised when there're errors in input"""
+    def __init__(self, value): # 自定义异常类型的初始化
+        self.value = value
+    def __str__(self): # 自定义异常类型的 string 表达形式
+        return ("{} is invalid input".format(repr(self.value)))
+try:
+    raise MyInputError(1) # 抛出 MyInputError 这个异常
+except MyInputError as err:
+    print('error: {}'.format(err))
+```
+
+## 函数
+
+> def 是可执行语句，这意味着函数直到被调用前，都是不存在的。
+> 当程序调用函数时，def 语句才会创建一个新的函数对象，并赋予其名字。
+
+> Python 是 dynamically typed 的，可以接受任何数据类型（整型，浮点，字符串等等）。
+> 对函数参数来说，这一点同样适用。
+
+```python
+def name(param1, param2, ..., paramN):
+    statements
+    return/yield value # optional
+```
+
+```python
+def find_largest_element(l):
+    if not isinstance(l, list):
+        print('input is not type of list')
+        return
+    if len(l) == 0:
+        print('empty input')
+        return
+    largest_element = l[0]
+    for item in l:
+        if item > largest_element:
+            largest_element = item
+    print('largest element is: {}'.format(largest_element))
+
+find_largest_element([8, 1,-3, 2, 0])
+# 输出
+# largest element is: 8
+```
+
+函数的嵌套能够保证内部函数的隐私。
+> 内部函数只能被外部函数所调用和访问，不会暴露在全局作用域，因此，如果你的函数内部有一些隐私数据（比如数据库的用户、密码等），不想暴露在外，那你就可以使用函数的的嵌套，将其封装在内部函数中，只通过外部函数来访问。
+
+```python
+def connect_DB():
+    def get_DB_configuration():
+        ...
+        return host, username, password
+    conn = connector.connect(get_DB_configuration())
+    return conn
+```
+
+函数内修改全局变量
+```python
+MIN_VALUE = 1
+MAX_VALUE = 10
+def validation_check(value):
+    global MIN_VALUE
+    ...
+    MIN_VALUE += 1
+    ...
+# 调用
+validation_check(5)
+```
+
+> global 关键字，并不表示重新创建了一个全局变量 MIN_VALUE，而是告诉Python 解释器，函数内部的变量 MIN_VALUE，就是之前定义的全局变量，并不是新的全局变量，也不是局部变量。
+> 这样，程序就可以在函数内部访问全局变量，并修改它的值了。
+
+对于嵌套函数来说，内部函数可以访问外部函数定义的变量，但是无法修改，若要修改，必须加上 nonlocal 这个关键字。
+
+```python
+def outer():
+    x = "local"
+def inner():
+    nonlocal x # nonlocal 关键字表示这里的 x 就是外部函数 outer 定义的变量 x
+    x = 'nonlocal'
+    print("inner:", x)
+    inner()
+    print("outer:", x)
+
+outer()
+# 输出
+inner: nonlocal
+outer: nonlocal
+```
+
+### 闭包(closure)
+
+> 和嵌套函数优点类似，函数开头需要做一些额外工作，而你又需要多次调用这个函数时，将那些额外工作的代码放在外部函数，就可以减少多次调用导致的不必要的开销，提高程序的运行效率。
+> 闭包常常和装饰器（decorator）一起使用。
+
+```python
+def nth_power(exponent):
+    def exponent_of(base):
+        return base ** exponent
+    return exponent_of # 返回值是 exponent_of 函数
+
+square = nth_power(2) # 计算一个数的平方
+cube = nth_power(3) # 计算一个数的立方
+
+square
+# 输出
+<function __main__.nth_power.<locals>.exponent(base)>
+
+cube
+# 输出
+<function __main__.nth_power.<locals>.exponent(base)>
+
+print(square(2)) # 计算 2 的平方
+print(cube(2)) # 计算 2 的立方
+# 输出
+4 # 2^2
+8 # 2^3
+```
+
+[参考](https://zhuanlan.zhihu.com/p/26934085)
+
+什么是闭包？闭包有什么用？为什么要用闭包？
+
+首先，Python函数是第一类对象。闭包和函数紧密联系在一起。
+
+介绍闭包前有必要先介绍一些背景知识，诸如嵌套函数、变量的作用域等概念。
+
+作用域
+> 作用域是程序运行时变量可被访问的范围，定义在函数内的变量是局部变量，局部变量的作用范围只能是函数内部范围内，它不能在函数外引用。
+
+定义在模块最外层的变量是全局变量，它是全局范围内可见的，当然在函数里面也可以读取到全局变量的。例如：
+```python
+num = 10 # 全局作用域变量
+def foo():
+    print(num)  # 10
+```
+
+而在函数外部则不可以访问局部变量。例如：
+```python
+def foo():
+    num = 10
+print(num)  # NameError: name 'num' is not defined
+```
+
+嵌套函数
+> 函数不仅可以定义在模块的最外层，还可以定义在另外一个函数的内部，像这种定义在函数里面的函数称之为嵌套函数（nested function）
+
+例如：
+```python
+def print_msg():
+    # print_msg 是外围函数
+    msg = "zen of python"
+
+    def printer():
+        # printer是嵌套函数
+        print(msg)
+    printer()
+# 输出 zen of python
+print_msg()
+```
+
+对于嵌套函数，它可以访问到其外层作用域中声明的非局部（non-local）变量，比如代码示例中的变量 msg 可以被嵌套函数 printer 正常访问。
+
+那么有没有一种可能即使脱离了函数本身的作用范围，局部变量还可以被访问得到呢？答案是闭包。
+
+什么是闭包
+> 函数身为第一类对象，它可以作为函数的返回值返回。
+
+如下的例子：
+```python
+def print_msg():
+    # print_msg 是外围函数
+    msg = "zen of python"
+    def printer():
+        # printer 是嵌套函数
+        print(msg)
+    return printer
+
+another = print_msg()
+# 输出 zen of python
+another()
+```
+
+这段代码和前面例子的效果完全一样，同样输出 "zen of python"。不同的地方在于内部函数 printer 直接作为返回值返回了。
+
+一般情况下，函数中的局部变量仅在函数的执行期间可用，一旦 print_msg() 执行过后，我们会认为 msg变量将不再可用。
+
+然而，在这里我们发现 print_msg 执行完之后，在调用 another 的时候 msg 变量的值正常输出了，这就是闭包的作用，闭包使得局部变量在函数外被访问成为可能。
+
+看完这个例子，我们再来定义闭包，维基百科上的解释是:
+> 在计算机科学中，闭包（Closure）是词法闭包（Lexical Closure）的简称，是引用了自由变量的函数。
+> 这个被引用的自由变量将和这个函数一同存在，即使已经离开了创造它的环境也不例外。
+> 所以，有另一种说法认为闭包是由函数和与其相关的引用环境组合而成的实体。
+
+这里的 another 就是一个闭包，闭包本质上是一个函数，它有两部分组成，printer 函数和变量 msg。闭包使得这些变量的值始终保存在内存中。
+
+闭包，顾名思义，就是一个封闭的包裹，里面包裹着自由变量，就像在类里面定义的属性值一样，自由变量的可见范围随同包裹，哪里可以访问到这个包裹，哪里就可以访问到这个自由变量。
+
+为什么要使用闭包
+> 闭包避免了使用全局变量，此外，闭包允许将函数与其所操作的某些数据（环境）关连起来。
+> 这一点与面向对象编程是非常类似的，在面对象编程中，对象允许我们将某些数据（对象的属性）与一个或者多个方法相关联。
+
+一般来说，当对象中只有一个方法时，这时使用闭包是更好的选择。来看一个例子：
+```python
+def adder(x):
+    def wrapper(y):
+        return x + y
+    return wrapper
+
+adder5 = adder(5)
+# 输出 15
+adder5(10)
+# 输出 11
+adder5(6)
+```
+这比用类来实现更优雅，此外装饰器也是基于闭包的一中应用场景。
+
+所有函数都有一个 __closure__属性，如果这个函数是一个闭包的话，那么它返回的是一个由 cell 对象 组成的元组对象。
+
+cell 对象的cell_contents 属性就是闭包中的自由变量。
+
+```shell
+>>> adder.__closure__
+>>> adder5.__closure__
+(<cell at 0x103075910: int object at 0x7fd251604518>,)
+>>> adder5.__closure__[0].cell_contents
+5
+```
+
+这解释了为什么局部变量脱离函数之后，还可以在函数之外被访问的原因的，因为它存储在了闭包的cell_contents中了。
+
+## 匿名函数(lambda)
+
+格式：
+`lambda argument1, argument2,... argumentN : expression`
+
+lambda 是一个表达式（expression），并不是一个语句（statement）。
+
+lambda 的主体是只有一行的简单表达式，并不能扩展成一个多行的代码块。
+
+Python 之所以发明 lambda，就是为了让它和常规函数各司其职：lambda 专注于简单的任务，而常规函数则负责更复杂的多行逻辑。（[python之父的解释](https://www.artima.com/weblogs/viewpost.jsp?thread=147358)）
+
+匿名函数通常的使用场景是：程序中需要使用一个函数完成一个简单的功能，并且该函数只调用一次。
+
+
+在一些情况下，使用匿名函数 lambda，可以帮助我们大大简化代码的复杂度，提高代码的可读性。
+
+```python
+对一个列表中的所有元素做平方操作
+squared = map(lambda x: x**2, [1, 2, 3, 4, 5])
+
+def square(x):
+    return x**2
+squared = map(square, [1, 2, 3, 4, 5])
+```
+
+lambda 可以用在列表内部，而常规函数却不能
+```python
+[(lambda x: x*x)(x) for x in range(10)]
+# 输出
+[0, 1, 4, 9, 16, 25, 36, 49, 64, 81]
+```
+
+lambda 可以被用作某些函数的参数，而常规函数 def 也不能
+```python
+l = [(1, 20), (3, 0), (9, 10), (2, -1)]
+l.sort(key=lambda x: x[1]) # 按列表中元祖的第二个元素排序
+print(l)
+# 输出
+[(2, -1), (3, 0), (9, 10), (1, 20)]
+```
+
+```python
+# 对一个字典，根据值进行由高到底的排序
+d = {'mike': 10, 'lucy': 2, 'ben': 30}
+sorted(d.item(), key = lambda x: x[1], reverse = True)
+```
+
+
+
+Python 函数式编程
+> Python 的函数式编程特性，与匿名函数lambda，有着密切的联系。
+> 所谓函数式编程，是指代码中每一块都是不可变的（immutable），都由纯函数（pure function）的形式组成。
+> 这里的纯函数，是指函数本身相互独立、互不影响，对于相同的输入，总会有相同的输出，没有任何副作用。
+
+> 函数式编程的优点，主要在于其纯函数和不可变的特性使程序更加健壮，易于调试（debug）和测试；
+> 缺点主要在于限制多，难写。当然，Python 不同于一些语言（比如Scala），它并不是一门函数式编程语言。
+> 不过，Python 也提供了一些函数式编程的特性，值得我们了解和学习。
+
+Python 主要提供了这么几个函数：map()、filter() 和 reduce()，通常结合匿名函数lambda 一起使用。
+
+
+函数 map(function, iterable) 的第一个参数是函数对象，第二个参数是一个可以遍历的集合，它表示对iterable 的每一个元素，都运用 function 这个函数，最后返回一个新的可遍历的集合。
+```python
+l = [1, 2, 3, 4, 5]
+new_list = map(lambda x: x * 2, l) # [2， 4， 6， 8， 10]
+```
+
+性能对比：
+```shell
+# lambda
+python3 -mtimeit -s'xs=range(1000000)' 'map(lambda x: x*2, xs)'
+2000000 loops, best of 5: 171 nsec per loop
+
+# list comprehension
+python3 -mtimeit -s'xs=range(1000000)' '[x * 2 for x in xs]'
+5 loops, best of 5: 62.9 msec per loop
+
+# 常规
+python3 -mtimeit -s'xs=range(1000000)' 'l = []' 'for i in xs: l.append(i * 2)'
+5 loops, best of 5: 92.7 msec per loop
+```
+可以看到，map() 是最快的。因为 map() 函数直接由 C 语言写的，运行时不需要通过Python 解释器间接调用，并且内部做了诸多优化，所以运行速度最快。
+
+filter(function, iterable) 函数，它和 map 函数类似，function 同样表示一个函数对象。filter() 函数表示对 iterable 中的每个元素，都使用 function 判断，并返回True 或者 False，最后将返回 True 的元素组成一个新的可遍历的集合。
+```python
+l = [1, 2, 3, 4, 5]
+new_list = filter(lambda x: x % 2 == 0, l) # [2, 4]
+```
+
+reduce(function, iterable) 函数，它通常用来对一个集合做一些累积操作。function 同样是一个函数对象，规定它有两个参数，表示对 iterable 中的每个元素以及上一次调用后的结果，运用 function 进行计算，所以最后返回的是一个单独的数值。
+```python
+from functools import reduce
+# 计算某个列表元素的乘积
+l = [1, 2, 3, 4, 5]
+product = reduce(lambda x, y: x * y, l) # 1*2*3*4*5 = 120
+```
+
+类似的，filter() 和 reduce() 的功能，也可以用 for 循环或者 list comprehension来实现。
+
+## 类（面向对象OOM）
+
+类，一群有着相同属性和函数的对象的集合。
+
+`OOP (object oriented programming)`
+
+
+
 # 进阶
 
 # 规范
