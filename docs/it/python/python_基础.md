@@ -74,9 +74,33 @@ list因为可变，所以是一个over-allocate的array，tuple因为不可变�
 
 https://github.com/python/cpython/blob/master/Objects/listobject.c. 
 
+先来看 Python 3.7 的 list 源码。你可以先自己阅读下面两个链接里的内
+容。
+
+listobject.h：
+
+https://github.com/python/cpython/blob/949fe976d5c62ae63ed505ecf729f815d0baccfc/Include/listobject.h#L23
+
+listobject.c: 
+
+https://github.com/python/cpython/blob/3d75bd15ac82575967db367c517d7e6e703a6de3/Objects/listobject.c#L33
+
+
 tuple:
 
 https://github.com/python/cpython/blob/master/Objects/tupleobject.c
+
+下面是 Python 3.7 的 tuple 源码，同样的，你可以
+先自己阅读一下。
+
+tupleobject.h： 
+
+https://github.com/python/cpython/blob/3d75bd15ac82575967db367c517d7e6e703a6de3/Include/tupleobject.h#L25
+
+tupleobject.c：
+
+https://github.com/python/cpython/blob/3d75bd15ac82575967db367c517d7e6e703a6de3/Objects/tupleobject.c#L16
+
 
 创建一个空的列表，可以用下面的 A、B 两种方式，它们在效率上有什么区别吗？应该优先考虑使用哪种呢？
 ```python
@@ -380,6 +404,47 @@ try:
     raise MyInputError(1) # 抛出 MyInputError 这个异常
 except MyInputError as err:
     print('error: {}'.format(err))
+```
+
+```python
+e = 1
+try:
+    1/0
+except ZeroDivisionError as e:
+    pass
+
+print(e) # NameError: name 'e' is not defined
+```
+
+查阅官方文档，会看到这么一句话`When an exception has been assigned using as target, it is cleared at the end of the except clause. `
+
+如果你在异常处理的 except block 中，把异常赋予了一个变量，那么这个变量会在 except block 执行结束时被删除。相当于下面这样的表示：
+```python
+e = 1
+try:
+    1/0
+except ZeroDivisionError as e:
+    try:
+        pass
+    finally:
+        del e
+```
+
+如果全局变量指向的对象是可变的，比如是列表、字典等等，你就可以在函数内部修改它了。
+```python
+x = [1]
+def func():
+    x.append(2)
+
+func()
+print(x) # [1, 2]
+
+x = 1
+def func():
+    # 程序默认函数内部的 x 是局部变量，而你没有为其赋值就直接引用，显然是不可行。
+    x += 1
+
+func() # UnboundLocalError: local variable 'x' referenced before assignment
 ```
 
 ## 函数
@@ -707,6 +772,133 @@ product = reduce(lambda x, y: x * y, l) # 1*2*3*4*5 = 120
 
 `OOP (object oriented programming)`
 
+```python
+def __init__(self, title, author, context):
+    # 表示构造函数，意即一个对象生成时会被自动调用的函数。
+    pass
+```
+
+如果一个属性以 __ （注意，此处有两个 _） 开头，我们就默认这个属性是私有属性。
+
+类函数的第一个参数一般为 cls，表示必须传一个类进来。类函数最常用的功能是实现不同的 init 构造函数.
+
+类函数需要装饰器 @classmethod 来声明。
+
+每个类都有构造函数，继承类在生成对象的时候，是不会自动调用父类的构造函数的，因此你必须在 init() 函数中显式调用父类的构造函数。它们的执行顺序是 子类的构造函数 -> 父类的构造函数。
+
+问题：多重继承
+> 多重继承，是基于mro进行查找，使用的是一种C3的算法。
+> 可以通过 xxx.__mro__ 查看继承的顺序
+
+多重继承有两种初始化方法：
+> 第一种，super(BOWInvertedIndexEngineWithCache, self).__init__()直接初始化该类的第一个父类，不过使用这种方法时，要求继承链的最顶层父类必须要继承object；
+> 第二种，对于多重继承，如果有多个构造函数需要调用， 我们就必须用传统的方法LRUCache.__init__(self) 。
+
+
+
+菱形继承问题？
+> 菱形继承潜在的问题：一个基类的初始化函数可能被调用两次。
+> 在一般的工程中，这显然不是我们所希望的。正确的做法应该是使用 super 来召唤父类的构造函数，而且python 使用一种叫做方法解析顺序的算法（具体实现算法叫做 C3），来保证一个类只会被初始化一次。
+
+私有变量能被继承吗？如果不能，你想继承应该怎么去做呢？
+> Python是没有严格的private变量的。子类确实无法直接访问父类"self.__var"变量。
+> 子类不能继承父类私有属性，只可透过self._Parent__varname去读取该私有属性的值。
+> 或在父类创建方法返回私有属性的值，然后子类调用父类方法去取得该私有属性的值。
+
+
+
+### 抽象函数和抽象类
+
+抽象类是一种特殊的类，它生下来就是作为父类存在的，一旦对象化就会报错。
+
+同样，抽象函数定义在抽象类之中，子类必须重写该函数才能使用。
+
+相应的抽象函数，则是使用装饰器@abstractmethod 来表示。
+
+## 模块化
+
+`from your_file import function_name, class_name`的方式调用
+
+在 Facebook 的编程规范中，除了一些极其特殊的情况，import 必须位于程序的最前端。
+
+还需要在模块所在的文件夹新建一个 __init__.py，内容可以为空，也可以用来表述包对外暴露的模块接口。
+
+不过，事实上，这是 Python 2 的规范。在 Python 3 规范中，__init__.py 并不是必须的。
+
+通常，一个 Python 文件在运行的时候，都会有一个运行时位置，最开始时即为这个文件所在的文件夹。
+
+当然，这个运行路径以后可以被改变。
+
+运行 sys.path.append("..") ，则可以改变当前 Python 解释器的位置。
+
+不过，一般而言我并不推荐，固定一个确定路径对大型工程来说是非常必要的。
+
+首先，你会发现，相对位置是一种很不好的选择。
+
+因为代码可能会迁移，相对位置会使得重构既不雅观，也易出错。
+
+因此，在大型工程中尽可能使用绝对位置是第一要义。
+
+对于一个独立的项目，所有的模块的追寻方式，最好从项目的根目录开始追溯，这叫做相对的绝对路径。
+
+如果你有兴趣，可以参考这篇论文：
+
+https://cacm.acm.org/magazines/2016/7/204032-why-google-stores-billions-of-lines-of-code-in-a-single-repository/fulltext
+
+**以项目的根目录作为最基本的目录，所有的模块调用，都要通过根目录一层层向下索引的方式来 import**
+
+实际上，Python 解释器在遇到 import 的时候，它会在一个特定的列表中寻找模块。
+
+这个特定的列表，可以用下面的方式拿到：
+```python
+import sys
+print(sys.path)
+
+########## 输出 ##########
+# ['', '/usr/lib/python36.zip', '/usr/lib/python3.6', '/usr/lib/python3.6/lib-dynload' ...]
+```
+
+请注意，它的第一项为空。
+
+其实，Pycharm 做的一件事，就是将第一项设置为项目根目录的绝对地址。
+
+这样，每次你无论怎么运行 main.py，import 函数在执行的时候，都会去项目根目录中找相应的包。
+
+有2种方式：
+
+1、
+```python
+import sys
+sys.path[0] = '/home/ubuntu/workspace/your_projects'
+```
+
+2、
+是修改 PYTHONHOME。
+Python 的 Virtual Environment（虚拟运行环境）。
+
+在一个 Virtual Environment 里，你能找到一个文件叫activate，在这个文件的末尾，填上下面的内容：
+`export PYTHONPATH="/home/ubuntu/workspace/your_projects"`
+
+Python 可以通过 Virtualenv 工具，非常方便地创建一个全新的 Python 运行环境。
+
+这样，每次你通过 activate 激活这个运行时环境的时候，它就会自动将项目的根目录添加到搜索路径中去。
+
+神奇的 `if __name__ == '__main__'`
+
+Python 是脚本语言，和 C++、Java 最大的不同在于，不需要显式提供 main() 函数入口。
+
+import 在导入文件的时候，会自动把所有暴露在外面的代码全都执行一遍。
+
+因此，如果你要把一个东西封装成模块，又想让它可以执行的话，你必须将要执行的代码放在 if__name__ == '__main__'下面。
+
+
+为什么呢？
+
+其实，__name__ 作为 Python 的魔术内置参数，本质上是模块对象的一个属性。
+
+我们使用 import 语句时，__name__ 就会被赋值为该模块的名字，自然就不等于__main__了。
+
+
 
 
 # 进阶
@@ -736,6 +928,12 @@ for i in range(0, 100000000):
 
 
 # 模块
+
+## Virtualenv
+
+
+
+## pylru
 
 ## collections 模块
 
