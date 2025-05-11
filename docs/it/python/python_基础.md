@@ -1271,9 +1271,1311 @@ l1
 
 在实际工作中，我们更倾向于使用后者，因为其表达清晰明了，不易出错。
 
+## 装饰器
+
+**所谓的装饰器，其实就是通过装饰器函数，来修改原函数的一些功能，使得原函数不需要修改。**
+> Decorators is to modify the behavior of the function through a wrapper so we don’t have to actually modify the function.
+
+而实际工作中，装饰器通常运用在身份认证、日志记录、输入合理性检查以及缓存等多个领域中。合理使用装饰器，往往能极大地提高程序的可读性以及运行效率。
+
+PS：
+> python的装饰器的应用场景有点像AOP的应用场景，把一些常用的业务逻辑分离，提高程序可重用性，降低耦合度，提高开发效率。
+
+
+
+- 日志记录
+- 方法耗时
+- 参数校验
+- 身份认证
+- 缓存
+
+LRU cache，在 Python 中的表示形式是@lru_cache。@lru_cache会缓存进程中的函数参数和结果，当缓存满了以后，会删除 least recenly used 的数据。
+
+
+### 函数装饰器
+
+**函数 -> 装饰器**
+
+
+
+在 Python 中，函数是一等公民（first-class citizen），函数也是对象。我们可以把函数赋予变量。
+
+可以把函数当作参数，传入另一个函数中。
+
+可以在函数里定义函数，也就是函数的嵌套。
+
+函数的返回值也可以是函数对象（闭包）
+
+
+```python
+def my_decorator(func):
+    def wrapper():
+        print('wrapper of decorator')
+        func()
+    return wrapper
+ 
+def greet():
+    print('hello world')
+ 
+greet = my_decorator(greet)
+greet()
+ 
+# 输出
+wrapper of decorator
+hello world
+
+# 更简单、更优雅的表示：
+def my_decorator(func):
+    def wrapper():
+        print('wrapper of decorator')
+        func()
+    return wrapper
+
+# @，我们称之为语法糖，@my_decorator就相当于前面的greet=my_decorator(greet)语句，只不过更加简洁。
+@my_decorator
+def greet():
+    print('hello world')
+
+greet()
+```
+
+### 类装饰器
+
+类装饰器主要依赖于函数__call_()，每当你调用一个类的示例时，函数__call__()就会被执行一次。
+
+### 装饰器的嵌套
+
+执行顺序从里到外
+
+```python
+@decorator1
+@decorator2
+@decorator3
+def func():
+    pass
+
+或者
+decorator1(decorator2(decorator3(func)))
+```
+
+## metaclass
+
+事实上，meta-class 的 meta 这个词根，起源于希腊语词汇 meta，包含下面两种意思：
+
+- “Beyond”，例如技术词汇 metadata，意思是描述数据的超越数据；
+- “Change”，例如技术词汇 metamorphosis，意思是改变的形态。
+
+metaclass，一如其名，实际上同时包含了“超越类”和“变形类”的含义，完全不是“基本类”的意思。所以，要深入理解 metaclass，我们就要围绕它的超越变形特性。
+
+接下来，我将为你展开 metaclass 的超越变形能力，讲清楚 metaclass 究竟有什么用？怎么应用？Python 语言设计层面是如何实现 metaclass 的 ？以及使用 metaclass 的风险。
+
+metaclass 的超越变形特性有什么用？
+
+YAML是一个家喻户晓的 Python 工具，可以方便地序列化 / 逆序列化结构数据。
+
+YAMLObject 的一个超越变形能力，就是它的任意子类支持序列化和反序列化（serialization & deserialization）。比如说下面这段代码：
+
+```python
+import yaml
+
+class Monster(yaml.YAMLObject):
+    yaml_tag = u'!Monster'
+
+    def __init__(self, name, hp, ac, attacks):
+        self.name = name
+        self.hp = hp
+        self.ac = ac
+        self.attacks = attacks
+
+    def __repr__(self):
+        return "%s(name=%r, hp=%r, ac=%r, attacks=%r)" % (
+            self.__class__.__name__, self.name, self.hp, self.ac,
+            self.attacks)
+
+
+yaml.load("""
+--- !Monster
+name: Cave spider
+hp: [2,6]    # 2d6
+ac: 16
+attacks: [BITE, HURT]
+""", Loader=yaml.FullLoader)
+
+Monster(name='Cave spider', hp=[2, 6], ac=16, attacks=['BITE', 'HURT'])
+
+print(yaml.dump(Monster(
+    name='Cave lizard', hp=[3, 6], ac=16, attacks=['BITE', 'HURT'])))
+# 输出：
+# !Monster
+# ac: 16
+# attacks:
+# - BITE
+# - HURT
+# hp:
+# - 3
+# - 6
+# name: Cave lizard
+```
+
+调用统一的 yaml.load()，就能把任意一个 yaml 序列载入成一个 Python Object；而调用统一的 yaml.dump()，就能把一个 YAMLObject 子类序列化。对于 load() 和 dump() 的使用者来说，他们完全不需要提前知道任何类型信息，这让超动态配置编程成了可能。
+
+对于 YAML 的使用者，这一点也很方便，你只要简单地继承 yaml.YAMLObject，就能让你的 Python Object 具有序列化和逆序列化能力。是不是相比普通 Python 类，有一点“变态”，有一点“超越”？
+
+metaclass 能够拦截 Python 类的定义。它是怎么做到的？
+
+要理解 metaclass 的底层原理，你需要深入理解 Python 类型模型。
+
+第一，所有的 Python 的用户定义类，都是 type 这个类的实例。
+
+事实上，类本身不过是一个名为 type 类的实例。在 Python 的类型世界里，type 这个类就是造物的上帝。
+
+```python
+class MyClass:
+  pass
+ 
+instance = MyClass()
+ 
+type(instance)
+# 输出
+<class '__main__.C'>
+ 
+type(MyClass)
+# 输出
+<class 'type'>
+```
+
+instance 是 MyClass 的实例，而 MyClass 不过是“上帝”type 的实例。
+
+第二，用户自定义类，只不过是 type 类的__call__运算符重载。
+
+当我们定义一个类的语句结束时，真正发生的情况，是 Python 调用 type 的__call__运算符。简单来说，当你定义一个类时，写成下面这样时：
+```python
+class MyClass:
+  data = 1
+```
+Python 真正执行的是下面这段代码：
+```python
+class = type(classname, superclasses, attributedict)
+```
+
+这里等号右边的type(classname, superclasses, attributedict)，就是 type 的__call__运算符重载，它会进一步调用：
+```python
+type.__new__(typeclass, classname, superclasses, attributedict)
+type.__init__(class, classname, superclasses, attributedict)
+```
+
+```python
+class MyClass:
+  data = 1
+  
+instance = MyClass()
+MyClass, instance
+# 输出
+(__main__.MyClass, <__main__.MyClass instance at 0x7fe4f0b00ab8>)
+instance.data
+# 输出
+1
+ 
+MyClass = type('MyClass', (), {'data': 1})
+instance = MyClass()
+MyClass, instance
+# 输出
+(__main__.MyClass, <__main__.MyClass at 0x7fe4f0aea5d0>)
+ 
+instance.data
+# 输出
+1
+```
+由此可见，正常的 MyClass 定义，和你手工去调用 type 运算符的结果是完全一样的。
+
+第三，metaclass 是 type 的子类，通过替换 type 的__call__运算符重载机制，“超越变形”正常的类。
+
+正是 Python 的类创建机制，给了 metaclass 大展身手的机会。
+
+一旦你把一个类型 MyClass 的 metaclass 设置成 MyMeta，MyClass 就不再由原生的 type 创建，而是会调用 MyMeta 的__call__运算符重载。
+```python
+class = type(classname, superclasses, attributedict) 
+# 变为了
+class = MyMeta(classname, superclasses, attributedict)
+```
+
+不过，凡事有利必有弊，尤其是 metaclass 这样“逆天”的存在。正如你所看到的那样，metaclass 会"扭曲变形"正常的 Python 类型模型。所以，如果使用不慎，对于整个代码库造成的风险是不可估量的。
+
+换句话说，metaclass 仅仅是给小部分 Python 开发者，在开发框架层面的 Python 库时使用的。而在应用层，metaclass 往往不是很好的选择。
+
+也正因为这样，据我所知，在很多硅谷一线大厂，使用 Python metaclass 需要特例特批。
+
+metaclass 是 Python 黑魔法级别的语言特性。天堂和地狱只有一步之遥，你使用好 metaclass，可以实现像 YAML 那样神奇的特性；而使用不好，可能就会打开潘多拉魔盒了。
+
+对初学者的科普和警告：不要轻易尝试 mateclass。
+
+## 深入理解迭代器和生成器
+
+容器、可迭代对象和迭代器
+
+在 Python 中一切皆对象，对象的抽象就是类，而对象的集合就是容器。
+
+列表（list: [0, 1, 2]），元组（tuple: (0, 1, 2)），字典（dict: {0:0, 1:1, 2:2}），集合（set: set([0, 1, 2])）都是容器。
+
+对于容器，你可以很直观地想象成多个元素在一起的单元；而不同容器的区别，正是在于内部数据结构的实现方法。然后，你就可以针对不同场景，选择不同时间和空间复杂度的容器。
+
+所有的容器都是可迭代的（iterable）。
+
+严谨地说，迭代器（iterator）提供了一个 next 的方法。调用这个方法后，你要么得到这个容器的下一个对象，要么得到一个 StopIteration 的错误（苹果卖完了）。你不需要像列表一样指定元素的索引，因为字典和集合这样的容器并没有索引一说。比如，字典采用哈希表实现，那么你就只需要知道，next 函数可以不重复不遗漏地一个一个拿到所有元素即可。
+
+而可迭代对象，通过 iter() 函数返回一个迭代器，再通过 next() 函数就可以实现遍历。for in 语句将这个过程隐式化，所以，你只需要知道它大概做了什么就行了。
+
+怎么判断一个对象是否可迭代。当然，这还有另一种做法，是 isinstance(obj, Iterable)。
+```python
+def is_iterable(param):
+    try: 
+        iter(param) 
+        return True
+    except TypeError:
+        return False
+ 
+params = [
+    1234,
+    '1234',
+    [1, 2, 3, 4],
+    set([1, 2, 3, 4]),
+    {1:1, 2:2, 3:3, 4:4},
+    (1, 2, 3, 4)
+]
+    
+for param in params:
+    print('{} is iterable? {}'.format(param, is_iterable(param)))
+ 
+########## 输出 ##########
+1234 is iterable? False
+1234 is iterable? True
+[1, 2, 3, 4] is iterable? True
+{1, 2, 3, 4} is iterable? True
+{1: 1, 2: 2, 3: 3, 4: 4} is iterable? True
+(1, 2, 3, 4) is iterable? True
+```
+
+**生成器是懒人版本的迭代器。**
+
+```python
+import os
+import psutil
+
+
+# 显示当前 python 程序占用的内存大小
+def show_memory_info(hint):
+    pid = os.getpid()
+    p = psutil.Process(pid)
+
+    info = p.memory_full_info()
+    memory = info.uss / 1024. / 1024
+    print('{} memory used: {} MB'.format(hint, memory))
+
+
+def test_iterator():
+    show_memory_info('initing iterator')
+    list_1 = [i for i in range(100000000)]
+    show_memory_info('after iterator initiated')
+    print(sum(list_1))
+    show_memory_info('after sum called')
+
+
+def test_generator():
+    show_memory_info('initing generator')
+    list_2 = (i for i in range(100000000))
+    show_memory_info('after generator initiated')
+    print(sum(list_2))
+    show_memory_info('after sum called')
+
+test_iterator()
+
+test_generator()
+
+# initing iterator memory used: 6.6796875 MB
+# after iterator initiated memory used: 3448.6953125 MB
+# 4999999950000000
+# after sum called memory used: 3877.38671875 MB
+# initing generator memory used: 6.72265625 MB
+# after generator initiated memory used: 6.72265625 MB
+# 4999999950000000
+# after sum called memory used: 6.7265625 MB
+```
+
+声明一个迭代器很简单，[i for i in range(100000000)]就可以生成一个包含一亿元素的列表。每个元素在生成后都会保存到内存中，你通过代码可以看到，它们占用了巨量的内存，内存不够的话就会出现 OOM 错误。
+
+不过，我们并不需要在内存中同时保存这么多东西，比如对元素求和，我们只需要知道每个元素在相加的那一刻是多少就行了，用完就可以扔掉了。
+
+于是，生成器的概念应运而生，在你调用 next() 函数的时候，才会生成下一个变量。生成器在 Python 的写法是用小括号括起来，(i for i in range(100000000))，即初始化了一个生成器。
+
+这样一来，你可以清晰地看到，生成器并不会像迭代器一样占用大量内存，只有在被使用的时候才会调用。而且生成器在初始化的时候，并不需要运行一次生成操作，相比于 test_iterator() ，test_generator() 函数节省了一次生成一亿个元素的过程，因此耗时明显比迭代器短。
+
+```python
+'''
+数学中有一个恒等式，(1 + 2 + 3 + ... + n)^2 = 1^3 + 2^3 + 3^3 + ... + n^3
+'''
+
+def generator(k):
+    i = 1
+    while True:
+        yield i ** k
+        i += 1
+
+
+gen_1 = generator(1)
+gen_3 = generator(3)
+print(gen_1)
+print(gen_3)
+
+def get_sum(n):
+    sum_1, sum_3 = 0, 0
+    for i in range(n):
+        next_1 = next(gen_1)
+        next_3 = next(gen_3)
+        print('next_1 = {}, next_3 = {}'.format(next_1, next_3))
+        sum_1 += next_1
+        sum_3 += next_3
+    print(sum_1 * sum_1, sum_3)
+
+
+get_sum(8)
+
+########## 输出 ##########
+# <generator object generator at 0x000001938CDAD2E0>
+# <generator object generator at 0x000001938CDAD200>
+# next_1 = 1, next_3 = 1
+# next_1 = 2, next_3 = 8
+# next_1 = 3, next_3 = 27
+# next_1 = 4, next_3 = 64
+# next_1 = 5, next_3 = 125
+# next_1 = 6, next_3 = 216
+# next_1 = 7, next_3 = 343
+# next_1 = 8, next_3 = 512
+# 1296 1296
+```
+这段代码中，你首先注意一下 generator() 这个函数，它返回了一个生成器。
+
+接下来的 yield 是魔术的关键。对于初学者来说，你可以理解为，函数运行到这一行的时候，程序会从这里暂停，然后跳出，不过跳到哪里呢？答案是 next() 函数。那么 i ** k 是干什么的呢？它其实成了 next() 函数的返回值。
+
+这样，每次 next(gen) 函数被调用的时候，暂停的程序就又复活了，从 yield 这里向下继续执行；同时注意，局部变量 i 并没有被清除掉，而是会继续累加。我们可以看到 next_1 从 1 变到 8，next_3 从 1 变到 512。
+
+聪明的你应该注意到了，这个生成器居然可以一直进行下去！没错，事实上，迭代器是一个有限集合，生成器则可以成为一个无限集。我只管调用 next()，生成器根据运算会自动生成新的元素，然后返回给你，非常便捷。
+
+```python
+# 问题：给定一个 list 和一个指定数字，求这个数字在 list 中的位置
+def index_normal(L, target):
+    result = []
+    for i, num in enumerate(L):
+        if num == target:
+            result.append(i)
+    return result
+ 
+print(index_normal([1, 6, 2, 4, 5, 2, 8, 6, 3, 2], 2))
+ 
+########## 输出 ##########
+[2, 5, 9]
+
+def index_generator(L, target):
+    for i, num in enumerate(L):
+        if num == target:
+            yield i
+
+# index_generator 会返回一个 Generator 对象，需要使用 list 转换为列表后，才能用 print 输出。 
+print(list(index_generator([1, 6, 2, 4, 5, 2, 8, 6, 3, 2], 2)))
+
+########## 输出 ##########
+[2, 5, 9]
+```
+
+```python
+'''
+问题：给定两个序列，判定第一个是不是第二个的子序列。
+（LeetCode 链接如下：https://leetcode.com/problems/is-subsequence/ ）
+'''
+
+
+def is_subsequence(a, b):
+    b = iter(b)
+    return all(i in b for i in a)
+
+# print(is_subsequence([1, 3, 5], [1, 2, 3, 4, 5]))
+# print(is_subsequence([1, 4, 3], [1, 2, 3, 4, 5]))
+########## 输出 ##########
+# True
+# False
+
+def is_subsequence1(a, b):
+    b = iter(b)
+    print(b)
+
+    gen = (i for i in a)
+    print(gen)
+
+    for i in gen:
+        print(i)
+
+    gen = ((i in b) for i in a)
+    print(gen)
+
+    for i in gen:
+        print("," + str(i))
+
+    # 生成器只能遍历一次，继续调用 next() 会 raise StopIteration。只有复位生成器才能重新进行遍历。
+    for i in gen:
+        print(",," + str(i))
+    # return all(((i in b) for i in a))
+    return all(gen)
+
+
+print(is_subsequence1([1, 3, 5], [1, 2, 3, 4, 5]))
+print(is_subsequence1([1, 4, 3], [1, 2, 3, 4, 5]))
+
+########## 输出 ##########
+```
+
+```python
+(i in b)，大致等价于下面这段代码：
+while True:
+    val = next(b)
+    if val == i:
+        yield True
+```
+
+```python
+b = (i for i in range(5))
+ 
+print(2 in b)
+print(4 in b)
+print(3 in b)
+########## 输出 ##########
+True
+True
+False
+```
+
+all() 函数用来判断一个迭代器的元素是否全部为 True，如果是则返回 True，否则就返回 False.
+
+四种不同的对象，分别是容器、可迭代对象、迭代器和生成器。
+
+容器是可迭代对象，可迭代对象调用 iter() 函数，可以得到一个迭代器。
+
+迭代器可以通过 next() 函数来得到下一个元素，从而支持遍历。
+
+生成器是一种特殊的迭代器（注意这个逻辑关系反之不成立）。使用生成器，你可以写出来更加清晰的代码；合理使用生成器，可以降低内存占用、优化程序结构、提高程序速度。
+
+生成器在 Python 2 的版本上，是协程的一种重要实现方式；而 Python 3.5 引入 async await 语法糖后，生成器实现协程的方式就已经落后了。
+
+## 协程
+
+使用生成器，是 Python 2 开头的时代实现协程的老方法了，Python 3.7 提供了新的基于 asyncio 和 async / await 的方法。
+
+```python
+import time
+ 
+def crawl_page(url):
+    print('crawling {}'.format(url))
+    sleep_time = int(url.split('_')[-1])
+    time.sleep(sleep_time)
+    print('OK {}'.format(url))
+ 
+def main(urls):
+    for url in urls:
+        crawl_page(url)
+ 
+%time main(['url_1', 'url_2', 'url_3', 'url_4'])
+ 
+########## 输出 ##########
+crawling url_1
+OK url_1
+crawling url_2
+OK url_2
+crawling url_3
+OK url_3
+crawling url_4
+OK url_4
+Wall time: 10 s
+```
+
+协程怎么写：
+```python
+import asyncio
+ 
+async def crawl_page(url):
+    print('crawling {}'.format(url))
+    sleep_time = int(url.split('_')[-1])
+    await asyncio.sleep(sleep_time)
+    print('OK {}'.format(url))
+ 
+async def main(urls):
+    for url in urls:
+        await crawl_page(url)
+ 
+%time asyncio.run(main(['url_1', 'url_2', 'url_3', 'url_4']))
+ 
+########## 输出 ##########
+crawling url_1
+OK url_1
+crawling url_2
+OK url_2
+crawling url_3
+OK url_3
+crawling url_4
+OK url_4
+Wall time: 10 s
+```
+
+**await 是同步调用**
+
+async 修饰词声明异步函数，于是，这里的 crawl_page 和 main 都变成了异步函数。而调用异步函数，我们便可得到一个协程对象（coroutine object）。
+
+举个例子，如果你 print(crawl_page(''))，便会输出<coroutine object crawl_page at 0x000002BEDF141148>，提示你这是一个 Python 的协程对象，而并不会真正执行这个函数。
+
+再来说说协程的执行。执行协程有多种方法，常用的三种:
+
+首先，我们可以通过 await 来调用。await 执行的效果，和 Python 正常执行是一样的，也就是说程序会阻塞在这里，进入被调用的协程函数，执行完毕返回后再继续，而这也是 await 的字面意思。代码中 await asyncio.sleep(sleep_time) 会在这里休息若干秒，await crawl_page(url) 则会执行 crawl_page() 函数。
+
+其次，我们可以通过 asyncio.create_task() 来创建任务。
+
+最后，我们需要 asyncio.run 来触发运行。asyncio.run 这个函数是 Python 3.7 之后才有的特性，可以让 Python 的协程接口变得非常简单，你不用去理会事件循环怎么定义和怎么使用的问题。
+
+一个非常好的编程规范是，asyncio.run(main()) 作为主程序的入口函数，在程序运行周期内，只调用一次asyncio.run。
+
+```python
+import asyncio
+ 
+async def crawl_page(url):
+    print('crawling {}'.format(url))
+    sleep_time = int(url.split('_')[-1])
+    await asyncio.sleep(sleep_time)
+    print('OK {}'.format(url))
+ 
+async def main(urls):
+    tasks = [asyncio.create_task(crawl_page(url)) for url in urls]
+    # 写法1、
+    for task in tasks:
+        await task
+    # 写法2、
+    # await asyncio.gather(*tasks)
+ 
+%time asyncio.run(main(['url_1', 'url_2', 'url_3', 'url_4']))
+ 
+########## 输出 ##########
+crawling url_1
+crawling url_2
+crawling url_3
+crawling url_4
+OK url_1
+OK url_2
+OK url_3
+OK url_4
+Wall time: 3.99 s
+```
+
+另外，asyncio.create_task，asyncio.run 这些函数都是 Python 3.7 以上的版本才提供的，自然，相比于旧接口它们也更容易理解和阅读。
+
+```python
+import asyncio
+ 
+async def worker_1():
+    print('worker_1 start')
+    await asyncio.sleep(1)
+    print('worker_1 done')
+ 
+async def worker_2():
+    print('worker_2 start')
+    await asyncio.sleep(2)
+    print('worker_2 done')
+ 
+async def main():
+    print('before await')
+    await worker_1()
+    print('awaited worker_1')
+    await worker_2()
+    print('awaited worker_2')
+ 
+%time asyncio.run(main())
+ 
+########## 输出 ##########
+ 
+before await
+worker_1 start
+worker_1 done
+awaited worker_1
+worker_2 start
+worker_2 done
+awaited worker_2
+Wall time: 3 s
+```
+
+```python
+import asyncio
+ 
+async def worker_1():
+    print('worker_1 start')
+    await asyncio.sleep(1)
+    print('worker_1 done')
+ 
+async def worker_2():
+    print('worker_2 start')
+    await asyncio.sleep(2)
+    print('worker_2 done')
+ 
+async def main():
+    # task1 和 task2 任务被创建，并进入事件循环等待运行
+    task1 = asyncio.create_task(worker_1())
+    task2 = asyncio.create_task(worker_2())
+    print('before await')
+    await task1
+    print('awaited worker_1')
+    await task2
+    print('awaited worker_2')
+ 
+# asyncio.run(main())，程序进入 main() 函数，事件循环开启
+%time asyncio.run(main())
+ 
+########## 输出 ##########
+ 
+before await
+worker_1 start
+worker_2 start
+worker_1 done
+awaited worker_1
+worker_2 done
+awaited worker_2
+Wall time: 2.01 s
+```
+
+1、asyncio.run(main())，程序进入 main() 函数，事件循环开启；
+
+2、task1 和 task2 任务被创建，并进入事件循环等待运行；运行到 print，输出 'before await'；
+
+3、await task1 执行，用户选择从当前的主任务中切出，事件调度器开始调度 worker_1；
+
+4、worker_1 开始运行，运行 print 输出'worker_1 start'，然后运行到 await asyncio.sleep(1)， 从当前任务切出，事件调度器开始调度 worker_2；
+
+5、worker_2 开始运行，运行 print 输出 'worker_2 start'，然后运行 await asyncio.sleep(2) 从当前任务切出；
+
+6、以上所有事件的运行时间，都应该在 1ms 到 10ms 之间，甚至可能更短，事件调度器从这个时候开始暂停调度；
+
+7、一秒钟后，worker_1 的 sleep 完成，事件调度器将控制权重新传给 task_1，输出 'worker_1 done'，task_1 完成任务，从事件循环中退出；
+
+8、await task1 完成，事件调度器将控制器传给主任务，输出 'awaited worker_1'，·然后在 await task2 处继续等待；
+
+9、两秒钟后，worker_2 的 sleep 完成，事件调度器将控制权重新传给 task_2，输出 'worker_2 done'，task_2 完成任务，从事件循环中退出；
+
+10、主任务输出 'awaited worker_2'，协程全任务结束，事件循环结束。
+
+```python
+import asyncio
+
+
+async def worker_1():
+    await asyncio.sleep(1)
+    return 1
+
+
+async def worker_2():
+    await asyncio.sleep(2)
+    return 2 / 0
+
+
+async def worker_3():
+    await asyncio.sleep(3)
+    return 3
+
+
+async def main():
+    task_1 = asyncio.create_task(worker_1())
+    task_2 = asyncio.create_task(worker_2())
+    task_3 = asyncio.create_task(worker_3())
+
+    await asyncio.sleep(2)
+    task_3.cancel()
+
+    res = await asyncio.gather(task_1, task_2, task_3, return_exceptions=True)
+    print(res)
+
+asyncio.run(main())
+
+########## 输出 ##########
+# [1, ZeroDivisionError('division by zero'), CancelledError('')]
+```
+worker_1 正常运行，worker_2 运行中出现错误，worker_3 执行时间过长被我们 cancel 掉了，这些信息会全部体现在最终的返回结果 res 中。
+
+不过要注意return_exceptions=True这行代码。如果不设置这个参数，错误就会完整地 throw 到我们这个执行层，从而需要 try except 来捕捉，这也就意味着其他还没被执行的任务会被全部取消掉。为了避免这个局面，我们将 return_exceptions 设置为 True 即可。
+
+到这里，发现了没，线程能实现的，协程都能做到。
+
+```python
+'''
+用协程来实现一个经典的生产者消费者模型
+'''
+import asyncio
+import random
+
+
+async def consumer(queue, id):
+    while True:
+        val = await queue.get()
+        print('{} get a val: {}'.format(id, val))
+        await asyncio.sleep(1)
+
+
+async def producer(queue, id):
+    for i in range(5):
+        val = random.randint(1, 10)
+        await queue.put(val)
+        print('{} put a val: {}'.format(id, val))
+        await asyncio.sleep(1)
+
+
+async def main():
+    queue = asyncio.Queue()
+
+    consumer_1 = asyncio.create_task(consumer(queue, 'consumer_1'))
+    consumer_2 = asyncio.create_task(consumer(queue, 'consumer_2'))
+
+    producer_1 = asyncio.create_task(producer(queue, 'producer_1'))
+    producer_2 = asyncio.create_task(producer(queue, 'producer_2'))
+
+    await asyncio.sleep(10)
+    consumer_1.cancel()
+    consumer_2.cancel()
+
+    await asyncio.gather(consumer_1, consumer_2, producer_1, producer_2, return_exceptions=True)
+
+asyncio.run(main())
+
+########## 输出 ##########
+```
+
+协程和多线程的区别，主要在于两点，一是协程为单线程；二是协程由用户决定，在哪些地方交出控制权，切换到下一个任务。
+
+协程的写法更加简洁清晰，把 async / await 语法和 create_task 结合来用，对于中小级别的并发需求已经毫无压力。
+
+写协程程序的时候，你的脑海中要有清晰的事件循环概念，知道程序在什么时候需要暂停、等待 I/O，什么时候需要一并执行到底。
+
+**最后的最后，请一定不要轻易炫技。多线程模型也一定有其优点，一个真正牛逼的程序员，应该懂得，在什么时候用什么模型能达到工程上的最优，而不是自觉某个技术非常牛逼，所有项目创造条件也要上。技术是工程，而工程则是时间、资源、人力等纷繁复杂的事情的折衷。**
+
+## 并发编程之Futures
+
+并发（Concurrency）和并行（Parallelism）
+
+并发通常应用于 I/O 操作频繁的场景，比如你要从网站上下载多个文件，I/O 操作的时间可能会比 CPU 运行处理的时间长得多。
+
+而并行则更多应用于 CPU heavy 的场景，比如 MapReduce 中的并行计算，为了加快运行速度，一般会用多台机器、多个处理器来完成。
+
+单线程：
+```python
+import requests
+import time
+ 
+def download_one(url):
+    resp = requests.get(url)
+    print('Read {} from {}'.format(len(resp.content), url))
+    
+def download_all(sites):
+    for site in sites:
+        download_one(site)
+ 
+def main():
+    sites = [
+        'https://en.wikipedia.org/wiki/Portal:Arts',
+        'https://en.wikipedia.org/wiki/Portal:History',
+        'https://en.wikipedia.org/wiki/Portal:Society',
+        'https://en.wikipedia.org/wiki/Portal:Biography',
+        'https://en.wikipedia.org/wiki/Portal:Mathematics',
+        'https://en.wikipedia.org/wiki/Portal:Technology',
+        'https://en.wikipedia.org/wiki/Portal:Geography',
+        'https://en.wikipedia.org/wiki/Portal:Science',
+        'https://en.wikipedia.org/wiki/Computer_science',
+        'https://en.wikipedia.org/wiki/Python_(programming_language)',
+        'https://en.wikipedia.org/wiki/Java_(programming_language)',
+        'https://en.wikipedia.org/wiki/PHP',
+        'https://en.wikipedia.org/wiki/Node.js',
+        'https://en.wikipedia.org/wiki/The_C_Programming_Language',
+        'https://en.wikipedia.org/wiki/Go_(programming_language)'
+    ]
+    start_time = time.perf_counter()
+    download_all(sites)
+    end_time = time.perf_counter()
+    print('Download {} sites in {} seconds'.format(len(sites), end_time - start_time))
+    
+if __name__ == '__main__':
+    main()
+```
+
+多线程：
+```python
+import concurrent.futures
+import requests
+import threading
+import time
+ 
+def download_one(url):
+    resp = requests.get(url)
+    print('Read {} from {}'.format(len(resp.content), url))
+ 
+ 
+def download_all(sites):
+    # 多线程
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+        executor.map(download_one, sites)
+
+# 多进程
+def download_all_1(sites):
+    # 多进程
+    # 函数 ProcessPoolExecutor() 表示创建进程池，使用多个进程并行的执行程序。不过，这里我们通常省略参数 workers，因为系统会自动返回 CPU 的数量作为可以调用的进程数。
+    with futures.ProcessPoolExecutor() as executor: 
+        executor.map(download_one, sites)
+
+# 写法2
+def download_all_2(sites):
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+        to_do = []
+        for site in sites:
+            future = executor.submit(download_one, site)
+            to_do.append(future)
+            
+        for future in concurrent.futures.as_completed(to_do):
+            future.result()
+
+def main():
+    sites = [
+        'https://en.wikipedia.org/wiki/Portal:Arts',
+        'https://en.wikipedia.org/wiki/Portal:History',
+        'https://en.wikipedia.org/wiki/Portal:Society',
+        'https://en.wikipedia.org/wiki/Portal:Biography',
+        'https://en.wikipedia.org/wiki/Portal:Mathematics',
+        'https://en.wikipedia.org/wiki/Portal:Technology',
+        'https://en.wikipedia.org/wiki/Portal:Geography',
+        'https://en.wikipedia.org/wiki/Portal:Science',
+        'https://en.wikipedia.org/wiki/Computer_science',
+        'https://en.wikipedia.org/wiki/Python_(programming_language)',
+        'https://en.wikipedia.org/wiki/Java_(programming_language)',
+        'https://en.wikipedia.org/wiki/PHP',
+        'https://en.wikipedia.org/wiki/Node.js',
+        'https://en.wikipedia.org/wiki/The_C_Programming_Language',
+        'https://en.wikipedia.org/wiki/Go_(programming_language)'
+    ]
+    start_time = time.perf_counter()
+    download_all(sites)
+    end_time = time.perf_counter()
+    print('Download {} sites in {} seconds'.format(len(sites), end_time - start_time))
+ 
+if __name__ == '__main__':
+    main()
+```
+
+concurrent.futures 和 asyncio 中的Future 的区别是什么？
+
+https://stackoverflow.com/questions/29902908/what-is-the-difference-between-concurrent-futures-and-asyncio-futures
+
+## 并发编程之Asyncio
+
+Sync VS Async
+
+Sync（同步）和 Async（异步）
+
+所谓 Sync，是指操作一个接一个地执行，下一个操作必须等上一个操作完成后才能执行。
+
+而 Async 是指不同操作间可以相互交替执行，如果其中的某个操作被 block 了，程序并不会等待，而是会找出可执行的操作继续执行。
+
+事实上，Asyncio 和其他 Python 程序一样，是单线程的，它只有一个主线程，但是可以进行多个不同的任务（task），这里的任务，就是特殊的 future 对象。这些不同的任务，被一个叫做 event loop 的对象所控制。你可以把这里的任务，类比成多线程版本里的多个线程。
+
+```python
+import asyncio
+import aiohttp
+import time
+ 
+async def download_one(url):
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as resp:
+            print('Read {} from {}'.format(resp.content_length, url))
+ 
+async def download_all(sites):
+    tasks = [asyncio.create_task(download_one(site)) for site in sites]
+    await asyncio.gather(*tasks)
+ 
+def main():
+    sites = [
+        'https://en.wikipedia.org/wiki/Portal:Arts',
+        'https://en.wikipedia.org/wiki/Portal:History',
+        'https://en.wikipedia.org/wiki/Portal:Society',
+        'https://en.wikipedia.org/wiki/Portal:Biography',
+        'https://en.wikipedia.org/wiki/Portal:Mathematics',
+        'https://en.wikipedia.org/wiki/Portal:Technology',
+        'https://en.wikipedia.org/wiki/Portal:Geography',
+        'https://en.wikipedia.org/wiki/Portal:Science',
+        'https://en.wikipedia.org/wiki/Computer_science',
+        'https://en.wikipedia.org/wiki/Python_(programming_language)',
+        'https://en.wikipedia.org/wiki/Java_(programming_language)',
+        'https://en.wikipedia.org/wiki/PHP',
+        'https://en.wikipedia.org/wiki/Node.js',
+        'https://en.wikipedia.org/wiki/The_C_Programming_Language',
+        'https://en.wikipedia.org/wiki/Go_(programming_language)'
+    ]
+    start_time = time.perf_counter()
+    asyncio.run(download_all(sites))
+    end_time = time.perf_counter()
+    print('Download {} sites in {} seconds'.format(len(sites), end_time - start_time))
+    
+if __name__ == '__main__':
+    main()
+```
+
+Async 和 await 关键字是 Asyncio 的最新写法，表示这个语句 / 函数是 non-block 的，正好对应前面所讲的 event loop 的概念。如果任务执行的过程需要等待，则将其放入等待状态的列表中，然后继续执行预备状态列表里的任务。
+
+主函数里的 asyncio.run(coro) 是 Asyncio 的 root call，表示拿到 event loop，运行输入的 coro，直到它结束，最后关闭这个 event loop。事实上，asyncio.run() 是 Python3.7+ 才引入的，相当于老版本的以下语句：
+```python
+loop = asyncio.get_event_loop()
+try:
+    loop.run_until_complete(coro)
+finally:
+    loop.close()
+```
+
+实际工作中，想用好 Asyncio，特别是发挥其强大的功能，很多情况下必须得有相应的 Python 库支持。
+
+没有使用requests 库，而是用了 aiohttp 库，原因就是 requests 库并不兼容 Asyncio，但是 aiohttp 库兼容。
+
+Asyncio 软件库的兼容性问题，在 Python3 的早期一直是个大问题，但是随着技术的发展，这个问题正逐步得到解决。
+
+多线程还是 Asyncio
+
+遇到实际问题时，多线程和 Asyncio 到底如何选择呢？
+
+总的来说，你可以遵循以下伪代码的规范：
+```python
+if io_bound:
+    if io_slow:
+        print('Use Asyncio')
+    else:
+        print('Use multi-threading')
+else if cpu_bound:
+    print('Use multi-processing')
+```
+
+- 如果是 I/O bound，并且 I/O 操作很慢，需要很多任务 / 线程协同实现，那么使用 Asyncio 更合适。
+- 如果是 I/O bound，但是 I/O 操作很快，只需要有限数量的任务 / 线程，那么使用多线程就可以了。
+- 如果是 CPU bound，则需要使用多进程来提高程序运行效率。
+
+不同于多线程，Asyncio 是单线程的，但其内部 event loop 的机制，可以让它并发地运行多个不同的任务，并且比多线程享有更大的自主控制权。
+
+Asyncio 中的任务，在运行过程中不会被打断，因此不会出现 race condition 的情况。尤其是在 I/O 操作 heavy 的场景下，Asyncio 比多线程的运行效率更高。因为 Asyncio 内部任务切换的损耗，远比线程切换的损耗要小；并且 Asyncio 可以开启的任务数量，也比多线程中的线程数量多得多。
+
+但需要注意的是，很多情况下，使用 Asyncio 需要特定第三方库的支持，比如前面示例中的 aiohttp。而如果 I/O 操作很快，并不 heavy，那么运用多线程，也能很有效地解决问题。
+
+## Python GIL（全局解释器锁）
+
+Python 的线程，的的确确封装了底层的操作系统线程，在 Linux 系统里是 Pthread（全称为 POSIX Thread），而在 Windows 系统里是 Windows Thread。另外，Python 的线程，也完全受操作系统管理，比如协调何时执行、管理内存资源、管理中断等等。
+
+所以，虽然 Python 的线程和 C++ 的线程本质上是不同的抽象，但它们的底层并没有什么不同。
+
+事实上，Python 的解释器并不是线程安全的，为了解决由此带来的 race condition 等问题，Python 便引入了全局解释器锁，也就是同一时刻，只允许一个线程执行。当然，在执行 I/O 操作时，如果一个线程被 block 了，全局解释器锁便会被释放，从而让另一个线程能够继续执行。
+
+GIL，是最流行的 Python 解释器 CPython 中的一个技术术语。它的意思是全局解释器锁，本质上是类似操作系统的 Mutex。每一个 Python 线程，在 CPython 解释器中执行时，都会先锁住自己的线程，阻止别的线程执行。
+
+当然，CPython 会做一些小把戏，轮流执行 Python 线程。这样一来，用户看到的就是“伪并行”——Python 线程在交错执行，来模拟真正并行的线程。
+
+那么，为什么 CPython 需要 GIL 呢？这其实和 CPython 的实现有关。
+
+Python 的内存管理机制
+
+CPython 使用引用计数来管理内存，所有 Python 脚本中创建的实例，都会有一个引用计数，来记录有多少个指针指向它。当引用计数只有 0 时，则会自动释放内存。
+
+CPython 引进 GIL 其实主要就是这么两个原因：
+> 一是设计者为了规避类似于内存管理这样的复杂的竞争风险问题（race condition）；
+> 二是因为 CPython 大量使用 C 语言库，但大部分 C 语言库都不是原生线程安全的（线程安全会降低性能和增加复杂度）。
+
+GIL 的设计，主要是为了方便 CPython 解释器层面的编写者，而不是 Python 应用层面的程序员。作为 Python 的使用者，我们还是需要 lock 等工具，来确保线程安全。
+
+如何绕过 GIL？
+
+Python 的 GIL，是通过 CPython 的解释器加的限制。如果你的代码并不需要 CPython 解释器来执行，就不再受 GIL 的限制。
+
+事实上，很多高性能应用场景都已经有大量的 C 实现的 Python 库，例如 NumPy 的矩阵运算，就都是通过 C 来实现的，并不受 GIL 影响。
+
+所以，大部分应用情况下，你并不需要过多考虑 GIL。因为如果多线程计算成为性能瓶颈，往往已经有Python 库来解决这个问题了。
+
+换句话说，如果你的应用真的对性能有超级严格的要求，比如 100us 就对你的应用有很大影响，那我必须要说，Python 可能不是你的最优选择。
+
+当然，可以理解的是，我们难以避免的有时候就是想临时给自己松松绑，摆脱 GIL，比如在深度学习应用里，大部分代码就都是 Python 的。在实际工作中，如果我们想实现一个自定义的微分算子，或者是一个特定硬件的加速器，那我们就不得不把这些关键性能（performance-critical）代码在 C++ 中实现（不再受 GIL 所限），然后再提供 Python 的调用接口。
+
+总的来说，你只需要重点记住，绕过 GIL 的大致思路有这么两种就够了：
+- 绕过 CPython，使用 JPython（Java 实现的 Python 解释器）等别的实现；
+- 把关键性能代码，放到别的语言（一般是 C++）中实现。
+
+## Python 垃圾回收机制
+
+众所周知，我们当代的计算机都是图灵机架构。
+
+图灵机架构的本质，就是一条无限长的纸带，对应着我们今天的存储器。
+
+在工程学的演化中，逐渐出现了寄存器、易失性存储器（内存）和永久性存储器（硬盘）等产品。
+
+其实，这本身来自一个矛盾：速度越快的存储器，单位价格也越昂贵。
+
+因此，妥善利用好每一寸高速存储器的空间，永远是系统设计的一个核心。
+
+深入看一下 Python 内部的引用计数机制。
+```python
+import sys
+ 
+a = []
+ 
+# 两次引用，一次来自 a，一次来自 getrefcount
+print(sys.getrefcount(a))
+ 
+def func(a):
+    # 四次引用，a，python 的函数调用栈，函数参数，和 getrefcount
+    print(sys.getrefcount(a))
+ 
+func(a)
+ 
+# 两次引用，一次来自 a，一次来自 getrefcount，函数 func 调用已经不存在
+print(sys.getrefcount(a))
+ 
+########## 输出 ##########
+2
+4
+2
+```
+sys.getrefcount() 这个函数，可以查看一个变量的引用次数。不过别忘了，getrefcount 本身也会引入一次计数。
+
+另一个要注意的是，在函数调用发生的时候，会产生额外的两次引用，一次来自函数栈，另一个是函数参数。
+```python
+import sys
+ 
+a = []
+ 
+print(sys.getrefcount(a)) # 两次
+ 
+b = a
+ 
+print(sys.getrefcount(a)) # 三次
+ 
+c = b
+d = b
+e = c
+f = e
+g = d
+ 
+print(sys.getrefcount(a)) # 八次
+ 
+########## 输出 ##########
+2
+3
+8
+```
+
+想手动释放内存，应该怎么做呢？
+
+只需要先调用 del a 来删除一个对象；然后强制调用 gc.collect()，即可手动启动垃圾回收。
+```python
+import gc
+ 
+show_memory_info('initial')
+ 
+a = [i for i in range(10000000)]
+ 
+show_memory_info('after a created')
+ 
+del a
+gc.collect()
+ 
+show_memory_info('finish')
+# print(a)
+ 
+########## 输出 ##########
+initial memory used: 48.1015625 MB
+after a created memory used: 434.3828125 MB
+finish memory used: 48.33203125 MB
+```
+
+Python 使用标记清除（mark-sweep）算法和分代收集（generational），来启用针对循环引用的自动垃圾回收。
+
+先来看标记清除算法。我们先用图论来理解不可达的概念。对于一个有向图，如果从一个节点出发进行遍历，并标记其经过的所有节点；那么，在遍历结束后，所有没有被标记的节点，我们就称之为不可达节点。显而易见，这些节点的存在是没有任何意义的，自然的，我们就需要对它们进行垃圾回收。
+
+当然，每次都遍历全图，对于 Python 而言是一种巨大的性能浪费。所以，在 Python 的垃圾回收实现中，mark-sweep 使用双向链表维护了一个数据结构，并且只考虑容器类的对象（只有容器类对象才有可能产生循环引用）。具体算法这里我就不再多讲了，毕竟我们的重点是关注应用。
+
+而分代收集算法，则是另一个优化手段。
+
+Python 将所有对象分为三代。刚刚创立的对象是第 0 代；经过一次垃圾回收后，依然存在的对象，便会依次从上一代挪到下一代。而每一代启动自动垃圾回收的阈值，则是可以单独指定的。当垃圾回收器中新增对象减去删除对象达到相应的阈值时，就会对这一代对象启动垃圾回收。
+
+事实上，分代收集基于的思想是，新生的对象更有可能被垃圾回收，而存活更久的对象也有更高的概率继续存活。因此，通过这种做法，可以节约不少计算量，从而提高 Python 的性能。
+
+引用计数是其中最简单的实现，不过切记，引用计数并非充要条件，它只能算作充分非必要条件；至于其他的可能性，我们所讲的循环引用正是其中一种。
+
+调试内存泄漏
+
+不过，虽然有了自动回收机制，但这也不是万能的，难免还是会有漏网之鱼。内存泄漏是我们不想见到的，而且还会严重影响性能。有没有什么好的调试手段呢？
+
+答案当然是肯定的，接下来我就为你介绍一个“得力助手”。
+
+它就是 objgraph，一个非常好用的可视化引用关系的包。在这个包中，我主要推荐两个函数，第一个是 show_refs()，它可以生成清晰的引用关系图。
+
+通过下面这段代码和生成的引用调用图，你能非常直观地发现，有两个 list 互相引用，说明这里极有可能引起内存泄露。这样一来，再去代码层排查就容易多了。
+```python
+import objgraph
+ 
+a = [1, 2, 3]
+b = [4, 5, 6]
+ 
+a.append(b)
+b.append(a)
+ 
+objgraph.show_refs([a]) # 生成的引用调用图
+objgraph.show_backrefs([a])
+```
+
+总结：
+- 1、垃圾回收是 Python 自带的机制，用于自动释放不会再用到的内存空间；
+- 2、引用计数是其中最简单的实现，不过切记，这只是充分非必要条件，因为循环引用需要通过不可达判定，来确定是否可以回收；
+- 3、Python 的自动回收算法包括标记清除和分代收集，主要针对的是循环引用的垃圾收集；
+- 4、调试内存泄漏方面， objgraph 是很好的可视化分析工具。
+
 
 
 # 规范
+
+## 编码规范
+《8 号 Python 增强规范》（Python Enhacement Proposal #8），以下简称 PEP8；
+
+《Google Python 风格规范》（Google Python Style Guide），以下简称 Google Style，这是源自 Google 内部的风格规范。公开发布的社区版本，是为了让 Google 旗下所有 Python 开源项目的编程风格统一。
+
+http://google.github.io/styleguide/pyguide.html
+
+相对来说，Google Style 是比 PEP8 更严格的一个编程规范。
+
+因为 PEP8 的受众是个人和小团队开发者，而 Google Style 能够胜任大团队，企业级，百万行级别代码库。
+
+开发效率，关乎三类对象，也就是阅读者、编程者和机器。
+
+他们的优先级是阅读者的体验 >> 编程者的体验 >> 机器的体验。
+
+阅读者的体验 >> 编程者的体验
+
+写过代码的人可能都有体会，在我们的实际工作中，真正在打字的时间，远比阅读或者 debug 的时间要少。
+
+事实正是如此，研究表明，软件工程中 80% 的时间都在阅读代码。
+
+所以，为了提高开发效率，我们要优化的，不是你的打字时间，而是团队阅读的体验。
+
+其实，不少的编程规范，本来就是为了优化读者体验而存在的。
+
+举个例子，对于命名原则，我想很多人应该都有所理解，PEP8 第 38 条规定命名必须有意义，不能是无意义的单字母。但是当你作为阅读者时，一定能分辨下面两种代码的可读性不同：
+```python
+# 错误示例
+if (a <= 0):
+   return
+elif (a > b):
+   return
+else:
+  b -= a
+ 
+# 正确示例
+if (transfer_amount <= 0):
+   raise Exception('...')
+elif (transfer_amount > balance):
+   raise Exception('...')
+else:
+  balance -= transfer_amount
+```
+
+再举一个例子，Google Style 2.2 条规定，Python 代码中的 import 对象，只能是 package 或者 module。
+```python
+# 错误示例
+from mypkg import Obj
+from mypkg import my_func
+ 
+my_func([1, 2, 3])
+ 
+# 正确示例
+import numpy as np
+import mypkg
+ 
+np.array([6, 7, 8])
+```
+
+编程者的体验 >> 机器的体验
+
+说完了阅读者的体验，再来聊聊编程者的体验。我常常见到的一个错误倾向，是过度简化自己的代码，包括我自己也有这样的问题。一个典型的例子，就是盲目地使用 Python 的 list comprehension。
+```python
+# 错误示例
+result = [(x, y) for x in range(10) for y in range(5) if x * y > 10]
+```
+
+我敢打赌，一定很少有人能一口气写出来这么复杂的 list comprehension。这不仅容易累着自己，也让阅读者看得很累。其实，如果你用一个简单的 for loop，会让这段代码更加简洁明了，自己也更为轻松。
+```python
+# 正确示例
+result = []
+for x in range(10):
+  for y in range(5):
+     if x * y > 10:
+       result.append((x, y))
+```
+
+机器的体验也很重要
+
+讲完了编程者和阅读者的重要性，我们不能忽视了机器的体验。我们最终希望代码能正确、高效地在电脑上执行。但是，一些危险的编程风格，不仅会影响程序正确性，也容易成为代码效率的瓶颈。
+
+```python
+# 错误示例
+x = 27
+y = 27
+print(x is y)
+ 
+x = 721
+y = 721
+print(x is y)
+```
+
+PEP8 和 Google Style 都特别强调了，何时使用 is， 何时使用 ==，何时使用隐式布尔转换。
+
+Google Style 2.8 对于遍历方式的选择作出了限制。
+
+- 在代码评审工具里，添加必须的编程规范环节；
+- 把团队确定的代码规范写进 Pylint 里（https://www.pylint.org/），能够在每份代码提交前自动检查，不通过的代码无法提交。
+
+## 学会合理分解代码，提高代码可读性
+
+Guido van Rossum（吉多·范罗苏姆，Python 创始人 ）说过，代码的阅读频率远高于编写代码的频率。
+
+毕竟，即使是在编写代码的时候，你也需要对代码进行反复阅读和调试，来确认代码能够按照期望运行。
+
+PEP 是 Python Enhancement Proposal 的缩写，翻译过来叫“Python 增强规范”。正如我们写文章，会有句式、标点、段落格式、开头缩进等标准的规范一样，Python 书写自然也有一套较为官方的规范。PEP 8 就是这样一种规范，它存在的意义，就是让 Python 更易阅读，换句话，增强代码可读性。
+
+事实上，Pycharm 已经内置了 PEP 8 规范检测器，它会自动对编码不规范的地方进行检查，然后指出错误，并推荐修改方式。
+
+Settings>Editor>Code Style>Inspections>pep 8
+
+代码规范甚至是比代码准确更重要的事情，因为实际工作中，代码可读性的重要性一定比你想象的多得多。
+
+PEP 8 规范告诉我们，请选择四个空格的缩进，不要使用 Tab，更不要 Tab 和空格混着用。
+
+第二个要注意的是，每行最大长度请限制在 79 个字符。
+
+PEP 8 规定，全局的类和函数的上方需要空两个空行，而类的函数之间需要空一个空行。
+
+一份优秀的代码，离不开优秀的注释。
+
+请注意，行注释并不是很推荐的方式。
+
+## 命名规范
+计算机科学的两件难事：缓存失效和命名。
+
+一般来说，变量使用小写，通过下划线串联起来。
+
+如果是类的私有变量，请记得前面增加两个下划线。
+
+对于常量，最好的做法是全部大写，并通过下划线连接。
+
+对于函数名，同样也请使用小写的方式，通过下划线连接起来。
+
+对于类名，则应该首字母大写，然后合并起来。
+
+## 如何合理利用assert？
+
 
 
 # 问题
@@ -1298,6 +2600,22 @@ for i in range(0, 100000000):
 
 
 # 模块
+
+## objgraph
+
+官方doc：
+
+https://mg.pov.lt/objgraph/
+
+
+
+
+## asyncio
+
+
+## time
+
+## functools
 
 ## Virtualenv
 
