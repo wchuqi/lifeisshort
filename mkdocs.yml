@@ -14,7 +14,10 @@ repo_url: http://todo.com
 nav: 
   - 主页: index.md
   - 笔记:
-    - Python: it/python/python_基础.md
+    - Python: 
+      - 基础: it/python/python_基础.md
+      - Numpy: it/python/numpy.md
+      - matplotlib: it/python/matplotlib.md
     - 软件: 
       - 索引: it/tools/index.md
       - MkDocs: it/tools/MkDocs.md

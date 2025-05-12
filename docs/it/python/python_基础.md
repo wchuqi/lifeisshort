@@ -1,4 +1,6 @@
-# 简介
+# 基础
+
+## 简介
 
 学习心得：
 
@@ -27,8 +29,6 @@
 * 5、爬虫
 * 6、运维脚本
 * 7、数据挖掘（Data Mining）
-
-# 基础
 
 ![Python知识图谱](./images/Python知识图谱.png)
 
@@ -901,9 +901,9 @@ import 在导入文件的时候，会自动把所有暴露在外面的代码全�
 
 
 
-# 进阶
+## 进阶
 
-## 对象的比较、拷贝
+### 对象的比较、拷贝
 
 `'==' VS 'is'`
 
@@ -1158,7 +1158,7 @@ x == y
 ```
 运行代码时报错。原因是进行"=="时需要递归对比每一个元素，该循环是一个无限循环（无限个元素）。然而python专门设置的一种机制用来防止无限递归造成Python溢出崩溃，换句话说不能遍历比较到所有值，所以报错“RecursionError: maximum recursion depth exceeded in comparison”
 
-## Python里参数是如何传递的
+### Python里参数是如何传递的
 
 **值传递，通常就是拷贝参数的值，然后传递给函数里的新变量。这样，原变量和新变量之间互相独立，互不影响。**
 
@@ -1271,7 +1271,7 @@ l1
 
 在实际工作中，我们更倾向于使用后者，因为其表达清晰明了，不易出错。
 
-## 装饰器
+### 装饰器
 
 **所谓的装饰器，其实就是通过装饰器函数，来修改原函数的一些功能，使得原函数不需要修改。**
 > Decorators is to modify the behavior of the function through a wrapper so we don’t have to actually modify the function.
@@ -1292,7 +1292,7 @@ PS：
 LRU cache，在 Python 中的表示形式是@lru_cache。@lru_cache会缓存进程中的函数参数和结果，当缓存满了以后，会删除 least recenly used 的数据。
 
 
-### 函数装饰器
+#### 函数装饰器
 
 **函数 -> 装饰器**
 
@@ -1339,11 +1339,11 @@ def greet():
 greet()
 ```
 
-### 类装饰器
+#### 类装饰器
 
 类装饰器主要依赖于函数__call_()，每当你调用一个类的示例时，函数__call__()就会被执行一次。
 
-### 装饰器的嵌套
+#### 装饰器的嵌套
 
 执行顺序从里到外
 
@@ -1358,7 +1358,7 @@ def func():
 decorator1(decorator2(decorator3(func)))
 ```
 
-## metaclass
+### metaclass
 
 事实上，meta-class 的 meta 这个词根，起源于希腊语词汇 meta，包含下面两种意思：
 
@@ -1509,7 +1509,7 @@ metaclass 是 Python 黑魔法级别的语言特性。天堂和地狱只有一�
 
 对初学者的科普和警告：不要轻易尝试 mateclass。
 
-## 深入理解迭代器和生成器
+### 深入理解迭代器和生成器
 
 容器、可迭代对象和迭代器
 
@@ -1764,7 +1764,7 @@ all() 函数用来判断一个迭代器的元素是否全部为 True，如果是
 
 生成器在 Python 2 的版本上，是协程的一种重要实现方式；而 Python 3.5 引入 async await 语法糖后，生成器实现协程的方式就已经落后了。
 
-## 协程
+### 协程
 
 使用生成器，是 Python 2 开头的时代实现协程的老方法了，Python 3.7 提供了新的基于 asyncio 和 async / await 的方法。
 
@@ -2056,7 +2056,7 @@ asyncio.run(main())
 
 **最后的最后，请一定不要轻易炫技。多线程模型也一定有其优点，一个真正牛逼的程序员，应该懂得，在什么时候用什么模型能达到工程上的最优，而不是自觉某个技术非常牛逼，所有项目创造条件也要上。技术是工程，而工程则是时间、资源、人力等纷繁复杂的事情的折衷。**
 
-## 并发编程之Futures
+### 并发编程之Futures
 
 并发（Concurrency）和并行（Parallelism）
 
@@ -2170,7 +2170,7 @@ concurrent.futures 和 asyncio 中的Future 的区别是什么？
 
 https://stackoverflow.com/questions/29902908/what-is-the-difference-between-concurrent-futures-and-asyncio-futures
 
-## 并发编程之Asyncio
+### 并发编程之Asyncio
 
 Sync VS Async
 
@@ -2265,7 +2265,7 @@ Asyncio 中的任务，在运行过程中不会被打断，因此不会出现 ra
 
 但需要注意的是，很多情况下，使用 Asyncio 需要特定第三方库的支持，比如前面示例中的 aiohttp。而如果 I/O 操作很快，并不 heavy，那么运用多线程，也能很有效地解决问题。
 
-## Python GIL（全局解释器锁）
+### Python GIL（全局解释器锁）
 
 Python 的线程，的的确确封装了底层的操作系统线程，在 Linux 系统里是 Pthread（全称为 POSIX Thread），而在 Windows 系统里是 Windows Thread。另外，Python 的线程，也完全受操作系统管理，比如协调何时执行、管理内存资源、管理中断等等。
 
@@ -2305,7 +2305,7 @@ Python 的 GIL，是通过 CPython 的解释器加的限制。如果你的代码
 - 绕过 CPython，使用 JPython（Java 实现的 Python 解释器）等别的实现；
 - 把关键性能代码，放到别的语言（一般是 C++）中实现。
 
-## Python 垃圾回收机制
+### Python 垃圾回收机制
 
 众所周知，我们当代的计算机都是图灵机架构。
 
@@ -2436,9 +2436,9 @@ objgraph.show_backrefs([a])
 
 
 
-# 规范
+## 规范
 
-## 编码规范
+### 编码规范
 《8 号 Python 增强规范》（Python Enhacement Proposal #8），以下简称 PEP8；
 
 《Google Python 风格规范》（Google Python Style Guide），以下简称 Google Style，这是源自 Google 内部的风格规范。公开发布的社区版本，是为了让 Google 旗下所有 Python 开源项目的编程风格统一。
@@ -2537,7 +2537,7 @@ Google Style 2.8 对于遍历方式的选择作出了限制。
 - 在代码评审工具里，添加必须的编程规范环节；
 - 把团队确定的代码规范写进 Pylint 里（https://www.pylint.org/），能够在每份代码提交前自动检查，不通过的代码无法提交。
 
-## 学会合理分解代码，提高代码可读性
+### 学会合理分解代码，提高代码可读性
 
 Guido van Rossum（吉多·范罗苏姆，Python 创始人 ）说过，代码的阅读频率远高于编写代码的频率。
 
@@ -2561,7 +2561,7 @@ PEP 8 规定，全局的类和函数的上方需要空两个空行，而类的�
 
 请注意，行注释并不是很推荐的方式。
 
-## 命名规范
+### 命名规范
 计算机科学的两件难事：缓存失效和命名。
 
 一般来说，变量使用小写，通过下划线串联起来。
@@ -2576,11 +2576,354 @@ PEP 8 规定，全局的类和函数的上方需要空两个空行，而类的�
 
 ## 如何合理利用assert？
 
+什么是 assert？
+
+Python 的 assert 语句，可以说是一个 debug 的好工具，主要用于测试一个条件是否满足。如果测试的条件满足，则什么也不做，相当于执行了 pass 语句；如果测试条件不满足，便会抛出异常 AssertionError，并返回具体的错误信息（optional）。
+
+`assert_stmt ::=  "assert" expression ["," expression]`
+
+```python
+assert 1 == 2
+相当于下面这两行代码：
+if __debug__:
+    if not expression: raise AssertionError
+
+assert 1 == 2,  expression1, 'assertion is wrong'
+
+if __debug__:
+    if not expression1: raise AssertionError(expression2)
+```
+
+这里的__debug__是一个常数。
+
+如果 Python 程序执行时附带了-O这个选项，比如Python test.py -O，那么程序中所有的 assert 语句都会失效，常数__debug__便为 False；反之__debug__则为 True
 
 
-# 问题
+不过，需要注意的是，直接对常数__debug__赋值是非法的，因为它的值在解释器开始运行时就已经决定了，中途无法改变。
 
-## Python中循环结构while和for谁的效率高呢？
+此外，一定记住，不要在使用 assert 时加入括号
+```python
+assert(1 == 2, 'This should fail')
+# 输出
+<ipython-input-8-2c057bd7fe24>:1: SyntaxWarning: assertion is always true, perhaps remove parentheses?
+  assert(1 == 2, 'This should fail')
+
+正确的写法，应该是下面这种不带括号的写法：
+
+assert 1 == 2， 'This should fail'
+# 输出
+AssertionError: This should fail
+```
+
+总的来说，assert 在程序中的作用，是对代码做一些 internal 的 self-check。使用 assert，就表示你很确定。这个条件一定会发生或者一定不会发生。
+
+举个例子，比如你有一个函数，其中一个参数是人的性别，因为性别只有男女之分（这里只指生理性别），你便可以使用 assert，以防止程序的非法输入。如果你的程序没有 bug，那么 assert 永远不会抛出异常；而它一旦抛出了异常，你就知道程序存在问题了，并且可以根据错误信息，很容易定位出错误的源头。
+
+总的来说，assert 并不适用 run-time error 的检查。比如你试图打开一个文件，但文件不存在；再或者是你试图从网上下载一个东西，但中途断网了了等等，这些情况下，还是应该参照我们前面所讲的错误与异常的内容，进行正确处理。
+
+不过，我们也不能滥用 assert。很多情况下，程序中出现的不同情况都是意料之中的，需要我们用不同的方案去处理，这时候用条件语句进行判断更为合适。而对于程序中的一些 run-time error，请记得使用异常处理。
+
+`assert isinstance(input, list), 'input must be type of list'`
+
+## 巧用上下文管理器和With语句精简代码
+
+上下文管理器（context manager）
+
+上下文管理器，能够帮助你自动分配并且释放资源，其中最典型的应用便是 with 语句。
+
+上下文管理器的实现
+
+### 基于类的上下文管理器
+
+了解了上下文管理的概念和优点后，下面我们就通过具体的例子，一起来看看上下文管理器的原理，搞清楚它的内部实现。这里，我自定义了一个上下文管理类 FileManager，模拟 Python 的打开、关闭文件操作：
+```python
+class FileManager:
+    def __init__(self, name, mode):
+        print('calling __init__ method')
+        self.name = name
+        self.mode = mode 
+        self.file = None
+        
+    def __enter__(self):
+        print('calling __enter__ method')
+        self.file = open(self.name, self.mode)
+        return self.file
+ 
+ 
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        print('calling __exit__ method')
+        if self.file:
+            self.file.close()
+            
+with FileManager('test.txt', 'w') as f:
+    print('ready to write to file')
+    f.write('hello world')
+    
+## 输出
+calling __init__ method
+calling __enter__ method
+ready to write to file
+calling __exit__ method
+```
+
+需要注意的是，当我们用类来创建上下文管理器时，必须保证这个类包括方法”__enter__()”和方法“__exit__()”。其中，方法“__enter__()”返回需要被管理的资源，方法“__exit__()”里通常会存在一些释放、清理资源的操作，比如这个例子中的关闭文件等等。
+
+当我们用 with 语句，执行这个上下文管理器时：
+```python
+with FileManager('test.txt', 'w') as f:
+    f.write('hello world')
+```
+下面这四步操作会依次发生：
+- 1、方法“__init__()”被调用，程序初始化对象 FileManager，使得文件名（name）是"test.txt"，文件模式 (mode) 是'w'；
+- 2、方法“__enter__()”被调用，文件“test.txt”以写入的模式被打开，并且返回 FileManager 对象赋予变量 f；
+- 3、字符串“hello world”被写入文件“test.txt”；
+- 4、方法“__exit__()”被调用，负责关闭之前打开的文件流。
+
+另外，值得一提的是，方法“__exit__()”中的参数“exc_type, exc_val, exc_tb”，分别表示 exception_type、exception_value 和 traceback。当我们执行含有上下文管理器的 with 语句时，如果有异常抛出，异常的信息就会包含在这三个变量中，传入方法“__exit__()”。
+
+因此，如果你需要处理可能发生的异常，可以在“__exit__()”添加相应的代码，比如下面这样来写：
+```python
+class Foo:
+    def __init__(self):
+        print('__init__ called')        
+ 
+    def __enter__(self):
+        print('__enter__ called')
+        return self
+    
+    def __exit__(self, exc_type, exc_value, exc_tb):
+        print('__exit__ called')
+        if exc_type:
+            print(f'exc_type: {exc_type}')
+            print(f'exc_value: {exc_value}')
+            print(f'exc_traceback: {exc_tb}')
+            print('exception handled')
+        return True
+    
+with Foo() as obj:
+    raise Exception('exception raised').with_traceback(None)
+ 
+# 输出
+__init__ called
+__enter__ called
+__exit__ called
+exc_type: <class 'Exception'>
+exc_value: exception raised
+exc_traceback: <traceback object at 0x1046036c8>
+exception handled
+```
+
+这里，我们在 with 语句中手动抛出了异常“exception raised”，你可以看到，“__exit__()”方法中异常，被顺利捕捉并进行了处理。不过需要注意的是，如果方法“__exit__()”没有返回 True，异常仍然会被抛出。因此，如果你确定异常已经被处理了，请在“__exit__()”的最后，加上“return True”这条语句。
+
+数据库的连接操作，也常常用上下文管理器来表示，这里我给出了比较简化的代码：
+```python
+class DBConnectionManager: 
+    def __init__(self, hostname, port): 
+        self.hostname = hostname 
+        self.port = port 
+        self.connection = None
+  
+    def __enter__(self): 
+        self.connection = DBClient(self.hostname, self.port) 
+        return self
+  
+    def __exit__(self, exc_type, exc_val, exc_tb): 
+        self.connection.close() 
+  
+with DBConnectionManager('localhost', '8080') as db_client: 
+```
+
+与前面 FileManager 的例子类似：
+
+方法“__init__()”负责对数据库进行初始化，也就是将主机名、接口（这里是 localhost 和 8080）分别赋予变量 hostname 和 port；
+
+方法“__enter__()”连接数据库，并且返回对象 DBConnectionManager；
+
+方法“__exit__()”则负责关闭数据库的连接。
+
+### 基于生成器的上下文管理器
+
+诚然，基于类的上下文管理器，在 Python 中应用广泛，也是我们经常看到的形式，不过 Python 中的上下文管理器并不局限于此。除了基于类，它还可以基于生成器实现。接下来我们来看一个例子。
+
+比如，你可以使用装饰器 contextlib.contextmanager，来定义自己所需的基于生成器的上下文管理器，用以支持 with 语句。还是拿前面的类上下文管理器 FileManager 来说，我们也可以用下面形式来表示：
+```python
+from contextlib import contextmanager
+ 
+@contextmanager
+def file_manager(name, mode):
+    try:
+        f = open(name, mode)
+        yield f
+    finally:
+        f.close()
+        
+with file_manager('test.txt', 'w') as f:
+    f.write('hello world')
+```
+
+这段代码中，函数 file_manager() 是一个生成器，当我们执行 with 语句时，便会打开文件，并返回文件对象 f；当 with 语句执行完后，finally block 中的关闭文件操作便会执行。
+
+你可以看到，使用基于生成器的上下文管理器时，我们不再用定义“__enter__()”和“__exit__()”方法，但请务必加上装饰器 @contextmanager，这一点新手很容易疏忽。
+
+讲完这两种不同原理的上下文管理器后，还需要强调的是，基于类的上下文管理器和基于生成器的上下文管理器，这两者在功能上是一致的。
+
+只不过，基于类的上下文管理器更加 flexible，适用于大型的系统开发；
+
+而基于生成器的上下文管理器更加方便、简洁，适用于中小型程序。
+
+无论你使用哪一种，请不用忘记在方法“__exit__()”或者是 finally block 中释放资源，这一点尤其重要。
+
+## 单元测试
+
+unit test（即单元测试）
+
+测试驱动开发（TDD）
+
+说起单元测试，就不得不提 Python unittest 库，它提供了我们需要的大多数工具。
+
+```python
+import unittest
+ 
+# 将要被测试的排序函数
+def sort(arr):
+    l = len(arr)
+    for i in range(0, l):
+        for j in range(i + 1, l):
+            if arr[i] >= arr[j]:
+                tmp = arr[i]
+                arr[i] = arr[j]
+                arr[j] = tmp
+ 
+ 
+# 编写子类继承 unittest.TestCase
+class TestSort(unittest.TestCase):
+ 
+   # 以 test 开头的函数将会被测试
+   def test_sort(self):
+        arr = [3, 4, 1, 5, 6]
+        sort(arr)
+        # assert 结果跟我们期待的一样
+        self.assertEqual(arr, [1, 3, 4, 5, 6])
+ 
+if __name__ == '__main__':
+    ## 如果在 Jupyter 下，请用如下方式运行单元测试
+    unittest.main(argv=['first-arg-is-ignored'], exit=False)
+    
+    ## 如果是命令行下运行，则：
+    ## unittest.main()
+    
+## 输出
+..
+----------------------------------------------------------------------
+Ran 2 tests in 0.002s
+OK
+```
+
+注意，测试函数要以‘test’开头，而测试函数的内部，通常使用 assertEqual()、assertTrue()、assertFalse() 和 assertRaise() 等 assert 语句对结果进行验证。
+
+Python 单元测试的几个技巧，分别是 mock、side_effect 和 patch。这三者用法不一样，但都是一个核心思想，即用虚假的实现，来替换掉被测试函数的一些依赖项，让我们能把更多的精力放在需要被测试的功能上。
+
+### mock
+mock 是单元测试中最核心重要的一环。mock 的意思，便是通过一个虚假对象，来代替被测试函数或模块需要的对象。
+
+举个例子，比如你要测一个后端 API 逻辑的功能性，但一般后端 API 都依赖于数据库、文件系统、网络等。这样，你就需要通过 mock，来创建一些虚假的数据库层、文件系统层、网络层对象，以便可以简单地对核心后端逻辑单元进行测试。
+
+Python mock 则主要使用 mock 或者 MagicMock 对象。
+```python
+import unittest
+from unittest.mock import MagicMock
+ 
+class A(unittest.TestCase):
+    def m1(self):
+        val = self.m2()
+        self.m3(val)
+ 
+    def m2(self):
+        pass
+ 
+    def m3(self, val):
+        pass
+ 
+    def test_m1(self):
+        a = A()
+        a.m2 = MagicMock(return_value="custom_val")
+        a.m3 = MagicMock()
+        a.m1()
+        self.assertTrue(a.m2.called) # 验证 m2 被 call 过
+        a.m3.assert_called_with("custom_val") # 验证 m3 被指定参数 call 过
+        
+if __name__ == '__main__':
+    unittest.main(argv=['first-arg-is-ignored'], exit=False)
+ 
+## 输出
+..
+----------------------------------------------------------------------
+Ran 2 tests in 0.002s
+OK
+```
+
+这段代码中，我们定义了一个类的三个方法 m1()、m2()、m3()。我们需要对 m1() 进行单元测试，但是 m1() 取决于 m2() 和 m3()。如果 m2() 和 m3() 的内部比较复杂, 你就不能只是简单地调用 m1() 函数来进行测试，可能需要解决很多依赖项的问题。
+
+这一听就让人头大了吧？但是，有了 mock 其实就很好办了。我们可以把 m2() 替换为一个返回具体数值的 value，把 m3() 替换为另一个 mock（空函数）。这样，测试 m1() 就很容易了，我们可以测试 m1() 调用 m2()，并且用 m2() 的返回值调用 m3()。
+
+可能你会疑惑，这样测试 m1() 不是基本上毫无意义吗？看起来只是象征性地测了一下逻辑呀？
+
+其实不然，真正工业化的代码，都是很多层模块相互逻辑调用的一个树形结构。单元测试需要测的是某个节点的逻辑功能，mock 掉相关的依赖项是非常重要的。这也是为什么会被叫做单元测试 unit test，而不是其他的 integration test、end to end test 这类。
+
+### Mock Side Effect
+
+就是 mock 的函数，属性是可以根据不同的输入，返回不同的数值，而不只是一个 return_value。
+
+```python
+from unittest.mock import MagicMock
+def side_effect(arg):
+    if arg < 0:
+        return 1
+    else:
+        return 2
+mock = MagicMock()
+mock.side_effect = side_effect
+ 
+mock(-1)
+1
+ 
+mock(1)
+2
+```
+
+### patch
+
+至于 patch，给开发者提供了非常便利的函数 mock 方法。它可以应用 Python 的 decoration 模式或是 context manager 概念，快速自然地 mock 所需的函数。
+
+```python
+from unittest.mock import patch
+ 
+@patch('sort')
+def test_sort(self, mock_sort):
+    ...
+    ...
+```
+
+在这个 test 里面，mock_sort 替代 sort 函数本身的存在，所以，我们可以像开始提到的 mock object 一样，设置 return_value 和 side_effect。
+
+另一种 patch 的常见用法，是 mock 类的成员函数，这个技巧我们在工作中也经常会用到，比如说一个类的构造函数非常复杂，而测试其中一个成员函数并不依赖所有初始化的 object。它的用法如下：
+```python
+with patch.object(A, '__init__', lambda x: None):
+      …
+```
+代码应该也比较好懂。在 with 语句里面，我们通过 patch，将 A 类的构造函数 mock 为一个 do nothing 的函数，这样就可以很方便地避免一些复杂的初始化（initialization）。
+
+其实，综合前面讲的这几点来看，你应该感受到了，单元测试的核心还是 mock，mock 掉依赖项，测试相应的逻辑或算法的准确性。在我看来，虽然 Python unittest 库还有很多层出不穷的方法，但只要你能掌握了 MagicMock 和 patch，编写绝大部分工作场景的单元测试就不成问题了。
+
+Python 的 coverage tool 来衡量 Test Coverage，并且显示每个模块为被 coverage 的语句。如果你想了解更多更详细的使用，可以点击这个链接来学习：
+
+https://coverage.readthedocs.io/en/v4.5.x/
+
+
+
+## 问题
+
+### Python中循环结构while和for谁的效率高呢？
 
 代码中所有直接调用C的操作的语句肯定比通过Python间接调用C（Python的解释器是C写的）快的多。
 
@@ -2599,9 +2942,11 @@ for i in range(0, 100000000):
 ```
 
 
-# 模块
+## 模块
 
-## objgraph
+### unittest
+
+### objgraph
 
 官方doc：
 
@@ -2610,26 +2955,26 @@ https://mg.pov.lt/objgraph/
 
 
 
-## asyncio
+### asyncio
 
 
-## time
+### time
 
-## functools
+### functools
 
-## Virtualenv
-
-
-
-## pylru
-
-## collections 模块
+### Virtualenv
 
 
-## dis分析字节码
+
+### pylru
+
+### collections 模块
 
 
-## timeit 模块
+### dis分析字节码
+
+
+### timeit 模块
 
 `python3 -m timeit` 
 > 是 Python 的一个命令行工具，用于测量小段代码的执行时间。它属于 Python 标准库中的 timeit 模块，专门用于简单、快速的性能测试。这个工具特别适合比较不同实现方式的性能差异。
