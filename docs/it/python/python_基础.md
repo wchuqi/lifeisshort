@@ -2919,6 +2919,101 @@ Python 的 coverage tool 来衡量 Test Coverage，并且显示每个模块为�
 
 https://coverage.readthedocs.io/en/v4.5.x/
 
+## pdb & cProfile：调试和性能分析的法宝
+
+在实际生产环境中，对代码进行调试和性能分析，是一个永远都逃不开的话题。调试和性能分析的主要场景，通常有这么三个：
+
+一是代码本身有问题，需要我们找到 root cause 并修复；
+二是代码效率有问题，比如过度浪费资源，增加 latency，因此需要我们 debug；
+三是在开发新的 feature 时，一般都需要测试。
+
+### 用 pdb 进行代码调试
+
+Python 的 pdb，正是其自带的一个调试库。它为 Python 程序提供了交互式的源代码调试功能，是命令行版本的 IDE 断点调试器。
+
+python的pdb package和Linux下的pdb debug工具很类似。
+
+还有一个ipdb是pdb的加强版，用法比较相近，不过需要pip安装一下。
+
+```python
+a = 1
+b = 2
+import pdb
+pdb.set_trace()
+c = 3
+print(a + b + c)
+
+> /Users/jingxiao/test.py(5)<module>()
+-> c = 3
+(pdb) p a
+1
+(pdb) p b
+2
+```
+
+[官方文档](https://docs.python.org/3/library/pdb.html#module-pdb)
+
+### 用 cProfile 进行性能分析
+
+所谓的 profile，是指对代码的每个部分进行动态的分析，比如准确计算出每个模块消耗的时间等。这样你就可以知道程序的瓶颈所在，从而对其进行修正或优化。当然，这并不需要你花费特别大的力气，在 Python 中，这些需求用 cProfile 就可以实现。
+
+```python
+def fib(n):
+    if n == 0:
+        return 0
+    elif n == 1:
+        return 1
+    else:
+        return fib(n-1) + fib(n-2)
+ 
+def fib_seq(n):
+    res = []
+    if n > 0:
+        res.extend(fib_seq(n-1))
+    res.append(fib(n))
+    return res
+ 
+fib_seq(30)
+
+import cProfile
+# def fib(n)
+# def fib_seq(n):
+cProfile.run('fib_seq(30)')
+
+#或者更简单一些，直接在运行脚本的命令中，加入选项“-m cProfile”也很方便：
+python3 -m cProfile xxx.py
+```
+
+https://docs.python.org/3.7/library/profile.html
+
+改进：
+```python
+def memoize(f):
+    memo = {}
+    def helper(x):
+        if x not in memo:            
+            memo[x] = f(x)
+        return memo[x]
+    return helper
+ 
+@memoize
+def fib(n):
+    if n == 0:
+        return 0
+    elif n == 1:
+        return 1
+    else:
+        return fib(n-1) + fib(n-2)
+
+def fib_seq(n):
+    res = []
+    if n > 0:
+        res.extend(fib_seq(n-1))
+    res.append(fib(n))
+    return res
+ 
+fib_seq(30)
+```
 
 
 ## 问题
@@ -2943,6 +3038,12 @@ for i in range(0, 100000000):
 
 
 ## 模块
+
+### profile
+
+### ipdb
+
+### pdb
 
 ### unittest
 

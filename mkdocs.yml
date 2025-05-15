@@ -14,6 +14,8 @@ repo_url: http://todo.com
 nav: 
   - 主页: index.md
   - 笔记:
+    - Postgresql:
+      - 基础: it/postgresql/pg.md
     - Python: 
       - 基础: it/python/python_基础.md
       - Numpy: it/python/numpy.md
