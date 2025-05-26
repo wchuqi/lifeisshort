@@ -963,9 +963,414 @@ pg_lsn类型是PostgreSQL9.4以上版本提供的一种表示LSN（Log Sequence 
 
 LSN表示WAL日志的位置。
 
-一些记录WAL日志信息的系统表中某些字段的类型就是pg_lsn类型
+一些记录WAL日志信息的系统表中某些字段的类型就是pg_lsn类型。
 
 ### 逻辑结构管理
+
+#### 数据库
+
+`alter database mytestdb01 rename to mydb01;`
+
+不能在事务块中删除数据库
+
+可以在事务块中修改数据库
+
+创建一个模式的同时，还可以在该模式下创建表的视图
+```sql
+CREATE SCHEMA osdba
+CREATE TABLE t1 (id int, title text)
+CREATE TABLE t2 (id int, content text)
+CREATE VIEW v1 AS
+SELECT a.id,a.title, b.content FROM t1 a, t2 b
+where a.id=b.id;
+```
+
+显示当前搜索路径
+`SHOW search_path;`
+
+默认情况下每个人在public模式下都有CREATE和USAGE权限。
+
+也就是说，允许所有可以连接到指定数据库上的用户在这里创建对象。
+
+当然，也可以撤销这个权限，命令如下：
+`REVOKE CREATE ON SCHEMA public FROM PUBLIC;`
+
+
+
+#### 表
+
+一般的表都有主键，如果表的主键只是由一个字段组成的，则可以通过直接在字段定义后面加上`PRIMARY KEY`关键字来指定。
+
+```sql
+create table test01(
+    id int primary key, 
+    note varchar(20)
+);
+NOTICE: CREATE TABLE / PRIMARY KEY will create implicit index
+"test01_pkey" for table "test01"
+CREATE TABLE
+```
+
+如果主键由两个及以上的字段组成（称为复合主键），这时就不能使用上面的语法了，而需要使用约束子句的语法，指定复合主键的约束子句语法如下：
+```sql
+-- CONSTRAINT constraint_name PRIMARY KEY (col1_name, col2_name,...)
+create table test02(
+    id1 int, 
+    id2 int, 
+    note varchar(20), 
+    CONSTRAINT pk_test02 primary key(id1,id2)  -- 约束子句是放在列定义后面的
+);
+NOTICE: CREATE TABLE / PRIMARY KEY will create implicit index
+"pk_test02" for table "test02"
+CREATE TABLE
+```
+
+建表的时候也可以指定唯一键，唯一键也是约束的一种，唯一键的约束子句语法如下：
+`CONSTRAINT constraint_name UNIQUE(col1_name, col2_name,...)`
+
+```sql
+create table test03(
+    id1 int, 
+    id2 int, 
+    id3 int, 
+    note varchar(20), 
+    CONSTRAINT pk_test03 primary key(id1,id2),
+    CONSTRAINT uk_test03_id3 UNIQUE(id3)
+);
+NOTICE: CREATE TABLE / PRIMARY KEY will create implicit index
+"pk_test03" for table "test03"
+NOTICE: CREATE TABLE / UNIQUE will create implicit index
+"uk_test03_id3" for table "test03"
+CREATE TABLE
+```
+
+此外，check也是一种约束形式，用于定义某些字段的值必须满足某种要求，语法如下：
+`CONSTRAINT constraint_name CHECK(expression)`
+
+```sql
+CREATE TABLE child(
+    name varchar(20), 
+    age int, 
+    note text, 
+    CONSTRAINT ck_child_age CHECK(age <18)
+);
+```
+
+可以以其他表为模板来创建新表
+```sql
+CREATE TABLE baby (LIKE child);
+CREATE TABLE
+```
+
+注意，此处创建的表没有把源表列上的约束复制过来。如果想完全复制源表列上的约束和其他信息，则需要加“INCLUDING”关键字，可用的“INCLUDES”选项如下：
+- INCLUDING DEFAULTS。
+- INCLUDING CONSTRAINTS。
+- INCLUDING INDEXES。
+- INCLUDING STORAGE。
+- INCLUDING COMMENTS。
+- INCLUDING ALL。
+
+其中“INCLUDING ALL”是把所有的属性全部复制过去
+`CREATE TABLE baby2 (LIKE child INCLUDING ALL);`
+
+也可以使用“CREATE TABLE...AS”来创建表（保留约束）
+`CREATE TABLE baby2 AS SELECT * FROM child WITH NO DATA;`
+
+TOAST技术
+
+“TOAST”是“The Oversized-Attribute Storage Technique”的缩写，，主要用于存储大字段的值。
+
+由于PostgreSQL页面的大小是固定的（通常是8KB），并且不允许行跨越多个页面，因此不可能直接存储非常大的字段值。
+
+为了突破这个限制，大的字段值通常被压缩或切片成多个物理行存到另一张系统表中，即TOAST表。
+
+只有特定的数据类型支持TOAST，这也很好理解，那些整数、浮点等不太长的数据类型是没有必要使用TOAST的。
+
+另外，支持TOAST的数据类型必须是变长的。
+
+如果一个表中有任何一个字段是可以TOAST的，那么PostgreSQL会自动为该表建一个相关联的TOAST表，其OID存储在表的pg_class.reltoastrelid记录里，行外的内容保存在TOAST表里。
+
+只有当数据的长度超过2040字节（大约为一个BLOCK的四分之一）时，才会触发TOAST压缩机制对数据进行压缩。有时就会产生一个有趣的现象，即数据多的表反而占用空间少。
+
+在PostgreSQL 11版本之前，触发TOAST的内容长度（2040字节）在编译程序时是固定的，并不能改动，也就是说对于块大小为8KB的数据库来说，触发TOAST压缩机制的数据其字段内容长度必须超过2040字节，否则无法触发。
+
+而在PostgreSQL11版本之后，增加了存储参数toast_tuple_target来控制这个值，如我们可以用下面的SQL语句来改变这个值：
+`alter table test01 set (toast_tuple_target=128);`
+
+在PostgreSQL数据库中，表还有一些其他的存储属性，比如，在表上可以设定以下存储参数：fillfactor和toast.fillfactor。
+
+fillfactor为这个表的填充因子；toast.fillfactor是这个表中TOAST表的填充因子。
+
+填充因子是一个从10到100的整数，表示在插入数据时，在一个数据块中填充百分之多少的空间后就不再填充，另一部分空间预留，更新时再使用。
+
+比如，设置该参数为“60”，则表示向一个数据块中插入的数据占用60%的空间后，就不再向其中插入数据了。而保留的这40%的空间就是用于更新数据的。
+
+在PostgreSQL中更新一条数据时，原数据行并不会被覆盖，而是会插入一条新的数据行，如果块中有空闲空间，则新行直接插入这个数据块中，由于行仍然在这个数据块中，因此PostsgreSQL可以使用Heap-Only Tuple技术，在原数据行与新数据行之间建一个链表，这样一来，就不需要更新索引了，索引项仍会指向原数据行，但通过原数据行与新数据行之间的链表依然可以找到最新的数据行。
+
+因为Heap-Only Tuple的链表不能跨数据块，如果新行必须插入新的数据块中，则无法使用到Heap-Only Tuple技术，这时就需要更新表上的全部索引了，这会产生很大的开销。
+
+所以需要对更新频繁的表设置一个较小的fillfactor值。
+
+**临时表**
+
+PostgreSQL支持两种临时表，一种是会话级的临时表；另一种是事务级的临时表。
+
+在会话级别的临时表中，数据可以一直保存在整个会话的生命周期中，而在事务级别的临时表中，数据只存在于这个事务的生命周期中。
+
+在PostgreSQL中，不管是事务级的临时表还是会话级的临时表，当会话结束时都会消失，这与Oracle数据库不同，在Oracle数据库中，只是临时表中的数据消失，而临时表还存在。
+
+如果在两个不同的session中创建一个同名的临时表，实际上创建的是两张不同的表。
+
+```sql
+create TEMPORARY table tmp_t1(id int primary key, note text);
+
+NOTICE: CREATE TABLE / PRIMARY KEY will create implicit index
+"tmp_t1_pkey" for table "tmp_t1"
+CREATE TABLE
+```
+
+临时表是生成一个特殊的Schema下的表，这个Schema名为“pg_temp_××”，其中的“××”代表一个数字，如“2”“3”等，但不同的session数字是不同的。
+
+不能访问其他session中的临时表的。
+
+默认情况下创建的临时表是会话级的，如果想创建出事务级的临时表，可以加“ON COMMIT DELETE ROWS”子句。
+
+```sql
+create TEMPORARY table tmp_t2(id int primary key, note text) on commit delete rows;
+
+NOTICE: CREATE TABLE / PRIMARY KEY will create implicit index
+"tmp_t2_pkey" for table "tmp_t2"
+CREATE TABLE
+```
+事务一旦结束，这种临时表中的数据就会消失。
+
+实际上，“ON COMMIT”子句有以下3种形式。
+- ON COMMIT PRESERVE ROWS：若不带“ON COMMIT”子句，默认情况下，数据会一直存在于整个会话周期中。
+- ON COMMIT DELETE ROWS：数据只存在于事务周期中，事务提交后数据就消失了。
+- ON COMMIT DROP：数据只存在于事务周期中，事务提交后临时表就消失了。这种情况下，创建临时表的语句与插入数据的语句需要放到一个事务中，若把创建临时表的语句放在一个单独的事务中，事务一旦结束，这张临时表就会消失。
+
+创建临时表时，关键字“TEMPORARY”也可以缩写为“TEMP”，下面的两条SQL语句是等价的：
+```sql
+create TEMPORARY table tmp_t1(id int primary key, note text);
+create TEMP table tmp_t1(id int primary key, note text);
+```
+
+另外，PostgreSQL为了能够与其他数据库创建临时表的语句兼容，还设
+有“GLOBAL”和“LOCAL”两个关键字，但这两个关键字没有任何作用。如下
+面的几条SQL语句都是等价的：
+```sql
+create TEMPORARY table tmp_t1(id int primary key, note text);
+
+create GLOBAL TEMPORARY table tmp_t1(id int primary key, note
+text);
+
+create LOCAL TEMPORARY table tmp_t1(id int primary key, note
+text);
+```
+
+**UNLOGGED表**
+
+UNLOGGED表是从PostgreSQL9.1版本开始新增的一种表，主要是通过禁止产生WAL日志的方式提升写性能。
+
+因为没有WAL日志，所以表的内容无法在主备库直接同步，如果此时数据库异常宕机，表的内容将丢失，所以可以把UNLOGGED表称为“半临时表”。
+
+当然如果数据库是正常关机的，则UNLOGGED表的内容不会丢失。
+
+创建UNLOGGED表的命令是“CREATE UNLOGGED TABLE”，如下：
+`CREATE UNLOGGED TABLE unlogged01(id int primary key, t text);`
+
+UNLOGGED表在使用上与普通表没有区别，仅仅在插入、删除、更新数据时不产生WAL日志，所以做这些DML操作的性能会更高。
+
+另外需要注意的是，数据库异常宕机时，UNLOGGED表的数据可能会丢失。
+
+**默认值**
+
+建表时可以为字段指定默认值。对于指定默认值的列，如果插入了新行，但设定了默认值的字段数值没有声明，那么这些字段将被自动填充为它们各自的默认值。
+
+`create table student(no int, name varchar(20), age int default 15);`
+
+在使用UPDATE语句时，也可以使用关键字“DEFAULT”来代表默认值:
+`update student set age=DEFAULT where no =2;`
+
+如果没有明确声明默认值，那么默认值是NULL。这么做通常是合理的，因为NULL表示“未知”。
+
+默认值可以是一个表达式，在插入默认值的时候会进行计算（而不是在创建表的时候）。一个常见的示例是一个timestamp字段可能有默认值now()，它表示插入行的时间:
+`create table blog(id int, title text, created_date timestamp default now());`
+
+**约束**
+
+数据类型限制了在表的列中存储什么类型的数据，对于很多应用来说，这种限制仍不够，有时还需要更多限制。
+
+目前，约束有以下几类：
+- 检查约束
+- 非空约束
+- 唯一约束
+- 主键
+- 外键约束
+
+**检查约束**
+
+检查约束是最常见的约束类型。使用了该约束，在设置某个字段中的数值时必须使该约束的表达式的值为真。
+
+比如，要限制一个人的年龄在0~150之间，命令如下：
+```sql
+CREATE TABLE persons (
+    name varchar(40),
+    age int CHECK (age >= 0 and age <=150),
+    sex boolean
+);
+```
+
+还可以给此约束取一个独立的名字。这样出错的时候就会把约束的名字也打印出来，从而使错误信息更清晰，另外，在需要修改约束的时候也可以引用约束的名字，创建语法如下：
+```sql
+CREATE TABLE persons (
+    name varchar(40),
+    age int CONSTRAINT check_age CHECK (age >= 0 and age <=150),
+    sex boolean
+);
+```
+
+一个检查约束可以引用多个字段。
+```sql
+CREATE TABLE books (
+    book_no integer,
+    name text,
+    price numeric CHECK (price > 0),
+    discounted_price numeric CHECK (discounted_price > 0),
+    CHECK (price > discounted_price)
+);
+```
+
+其中，前两个约束与前面的一样，第三个约束则使用了一个新的语法。它没有附在某个字段上，而是在逗号分隔的列表中以一个独立行的形式出现。
+
+我们称前两个约束是“字段约束”，第三个约束为“表约束”。
+
+在大多数的数据库中，字段约束也可以写成表约束，但反过来很可能不行，因为系统会假设字段约束只引用它所从属的字段，虽然在PostgreSQL中并非强制遵守这条规则，但是如果你希望自己的表定义可以和其他数据库系统兼容，那么最好还是遵守。
+
+上面的示例也可以这么写：
+```sql
+CREATE TABLE books (
+    book_no integer,
+    name text,
+    price numeric,
+    discounted_price numeric,
+    CHECK (price > 0)
+    CHECK (discounted_price > 0),
+    CHECK (price > discounted_price)
+);
+```
+或者写成如下命令：
+```sql
+CREATE TABLE books (
+    book_no integer,
+    name text,
+    price numeric,
+    discounted_price numeric,
+    CHECK (price > 0 and discounted_price > 0 and price >
+    discounted_price)
+);
+```
+和字段约束一样，我们也可以赋予表约束名称，方法相同，示例如下：
+```sql
+CREATE TABLE books (
+    book_no integer,
+    name text,
+    price numeric,
+    discounted_price numeric,
+    CHECK (price > 0)
+    CHECK (discounted_price > 0),
+    CONSTRAINT valid_discount CHECK (price > discounted_price)
+);
+```
+
+当约束表达式的计算结果为NULL时，检查约束会被认为是满足条件的。因为大多数表达式在含有NULL操作数的时候结果都是NULL，所以这些约束不能阻止字段值为NULL。要确保字段值不为NULL，可以使用非空约束。
+
+**非空约束**
+
+非空约束只是简单地声明一个字段必须不能是NULL。
+
+示例如下：
+```sql
+CREATE TABLE books (
+    book_no integer not null,
+    name text,
+    price numeric
+);
+```
+非空约束总是被写成一个字段约束。非空约束在功能上等效于创建一个检查约束：
+`CHECK (column_name IS NOT NULL)`
+
+但是，很明显，创建一个明确的非空约束要更直观一些。
+
+当然，一个字段可以有多个约束。只要一个接着一个写就可以了，它们的顺序不固定：
+```sql
+CREATE TABLE books (
+    book_no integer NOT NULL,
+    name text,
+    price numeric NOT NULL CHECK (price >0)
+);
+```
+
+**唯一约束**
+
+唯一约束可以保证在一个字段或者一组字段中的数据相较于表中其他行的数据是唯一的。它的语法如下：
+```sql
+CREATE TABLE books (
+    book_no integer UNIQUE,
+    name text,
+    price numeric
+);
+```
+上面的命令写成了字段约束，下面的命令则写成了表约束：
+```sql
+CREATE TABLE books (
+    book_no integer,
+    name text,
+    price numeric,
+    UNIQUE(book_no)
+);
+```
+
+**主键**
+
+主键与唯一约束的区别是，主键不能为空。通常我们是建表时就指定了主键：
+```sql
+CREATE TABLE books (
+    book_no integer primary key,
+    name text,
+    price numeric,
+    UNIQUE(book_no)
+);
+```
+当然也可以在后期在表上创建主键：
+`ALTER TABLE books add constraint pk_books_book_no primary key (book_no);`
+
+**外键约束**
+
+外键约束是对表之间关系的一种约束，用于约束本表中一个或多个字段的数值必须出现在另一个表的一个或多个字段中。
+
+这种约束也可以称为两个相关表之间的参照完整性约束。
+
+```sql
+CREATE TABLE class(
+    class_no int primary key,
+    class_name varchar(40)
+);
+CREATE TABLE student(
+    student_no int primary key,
+    student_name varchar(40),
+    age int,
+    class_no int REFERENCES class(class_no)
+);
+```
+外键约束“REFERENCES class(class_no)”表明在学生表中“class_no”的取值必须出现在表“class”中，且为“class_no”中的一个数值。
+
+
+
+
+#### 索引
+
+
 
 ### pg的核心架构
 
